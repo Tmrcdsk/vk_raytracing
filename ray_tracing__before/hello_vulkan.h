@@ -129,6 +129,7 @@ public:
   
   auto objectToVkGeometryKHR(const ObjModel& model);
   void createBottomLevelAS();
+  void createTopLevelAS();
 
   nvvk::RaytracingBuilderKHR m_rtBuilder;
 };
