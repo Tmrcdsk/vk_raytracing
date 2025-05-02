@@ -131,5 +131,12 @@ public:
   void createBottomLevelAS();
   void createTopLevelAS();
 
+  void createRtDescriptorSet();
+
   nvvk::RaytracingBuilderKHR m_rtBuilder;
+
+  nvvk::DescriptorSetBindings m_rtDescSetLayoutBind;
+  VkDescriptorPool            m_rtDescPool;
+  VkDescriptorSetLayout       m_rtDescSetLayout;
+  VkDescriptorSet             m_rtDescSet;
 };
