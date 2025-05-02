@@ -384,6 +384,8 @@ void HelloVulkan::destroyResources()
 
   // #VKRay
   m_rtBuilder.destroy();
+  vkDestroyDescriptorPool(m_device, m_rtDescPool, nullptr);
+  vkDestroyDescriptorSetLayout(m_device, m_rtDescSetLayout, nullptr);
 
   m_alloc.deinit();
 }
@@ -427,6 +429,7 @@ void HelloVulkan::onResize(int /*w*/, int /*h*/)
 {
   createOffscreenRender();
   updatePostDescriptorSet();
+  updateRtDescriptorSet();
 }
 
 
@@ -694,4 +697,16 @@ void HelloVulkan::createRtDescriptorSet()
   writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, RtxBindings::eTlas, &descASInfo));
   writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, RtxBindings::eOutImage, &imageInfo));
   vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+}
+
+//--------------------------------------------------------------------------------------------------
+// Writes the output image to the descriptor set
+// - Required when changing resolution
+//
+void HelloVulkan::updateRtDescriptorSet()
+{
+  // (1) Output buffer
+  VkDescriptorImageInfo imageInfo{{}, m_offscreenColor.descriptor.imageView, VK_IMAGE_LAYOUT_GENERAL};
+  VkWriteDescriptorSet  wds = m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, RtxBindings::eOutImage, &imageInfo);
+  vkUpdateDescriptorSets(m_device, 1, &wds, 0, nullptr);
 }

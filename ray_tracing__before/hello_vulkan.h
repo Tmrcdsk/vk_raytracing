@@ -132,6 +132,7 @@ public:
   void createTopLevelAS();
 
   void createRtDescriptorSet();
+  void updateRtDescriptorSet();
 
   nvvk::RaytracingBuilderKHR m_rtBuilder;
 
