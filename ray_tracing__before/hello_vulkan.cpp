@@ -380,10 +380,10 @@ void HelloVulkan::destroyResources()
   vkDestroyRenderPass(m_device, m_offscreenRenderPass, nullptr);
   vkDestroyFramebuffer(m_device, m_offscreenFramebuffer, nullptr);
 
-  m_alloc.deinit();
-
   // #VKRay
   m_rtBuilder.destroy();
+
+  m_alloc.deinit();
 }
 
 //--------------------------------------------------------------------------------------------------
