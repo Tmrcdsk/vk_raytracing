@@ -138,6 +138,8 @@ public:
 
   void createRtShaderBindingTable();
 
+  void raytrace(const VkCommandBuffer& cmdBuf, const glm::vec4& clearColor);
+
   nvvk::RaytracingBuilderKHR m_rtBuilder;
 
   nvvk::DescriptorSetBindings m_rtDescSetLayoutBind;
