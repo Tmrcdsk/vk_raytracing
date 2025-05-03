@@ -136,6 +136,8 @@ public:
 
   void createRtPipeline();
 
+  void createRtShaderBindingTable();
+
   nvvk::RaytracingBuilderKHR m_rtBuilder;
 
   nvvk::DescriptorSetBindings m_rtDescSetLayoutBind;
@@ -148,4 +150,10 @@ public:
   VkPipeline                                        m_rtPipeline;
   // Push constant for ray tracer
   PushConstantRay m_pcRay{};
+
+  nvvk::Buffer m_rtSBTBuffer;
+  VkStridedDeviceAddressRegionKHR m_rgenRegion{};
+  VkStridedDeviceAddressRegionKHR m_missRegion{};
+  VkStridedDeviceAddressRegionKHR m_hitRegion{};
+  VkStridedDeviceAddressRegionKHR m_callRegion{};
 };
