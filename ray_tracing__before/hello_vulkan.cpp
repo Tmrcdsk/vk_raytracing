@@ -824,7 +824,7 @@ void HelloVulkan::createRtPipeline()
 //
 void HelloVulkan::createRtShaderBindingTable()
 {
-  uint32_t missCount{1};
+  uint32_t missCount{2};
   uint32_t hitCount{1};
   auto     handleCount = 1 + missCount + hitCount;
   uint32_t handleSize  = m_rtProperties.shaderGroupHandleSize;
