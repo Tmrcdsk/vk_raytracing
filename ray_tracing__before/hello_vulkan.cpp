@@ -433,6 +433,7 @@ void HelloVulkan::onResize(int /*w*/, int /*h*/)
   createOffscreenRender();
   updatePostDescriptorSet();
   updateRtDescriptorSet();
+  resetFrame();
 }
 
 
@@ -905,6 +906,8 @@ void HelloVulkan::createRtShaderBindingTable()
 //
 void HelloVulkan::raytrace(const VkCommandBuffer& cmdBuf, const glm::vec4& clearColor)
 {
+  updateFrame();
+
   m_debug.beginLabel(cmdBuf, "Ray trace");
   // Initializing push constant values
   m_pcRay.clearColor     = clearColor;
@@ -921,4 +924,30 @@ void HelloVulkan::raytrace(const VkCommandBuffer& cmdBuf, const glm::vec4& clear
                      0, sizeof(PushConstantRay), &m_pcRay);
   vkCmdTraceRaysKHR(cmdBuf, &m_rgenRegion, &m_missRegion, &m_hitRegion, &m_callRegion, m_size.width, m_size.height, 1);
   m_debug.endLabel(cmdBuf);
+}
+
+//--------------------------------------------------------------------------------------------------
+// If the camera matrix or the the fov has changed, resets the frame.
+// otherwise, increments frame.
+//
+void HelloVulkan::updateFrame()
+{
+  static glm::mat4 refCamMatrix;
+  static float     refFov{CameraManip.getFov()};
+
+  const auto& m   = CameraManip.getMatrix();
+  const auto  fov = CameraManip.getFov();
+
+  if (refCamMatrix != m || refFov != fov)
+  {
+    resetFrame();
+    refCamMatrix = m;
+    refFov       = fov;
+  }
+  m_pcRay.frame++;
+}
+
+void HelloVulkan::resetFrame()
+{
+  m_pcRay.frame = -1;
 }

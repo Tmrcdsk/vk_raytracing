@@ -140,6 +140,10 @@ public:
 
   void raytrace(const VkCommandBuffer& cmdBuf, const glm::vec4& clearColor);
 
+  // #JitterCamera
+  void resetFrame();
+  void updateFrame();
+
   nvvk::RaytracingBuilderKHR m_rtBuilder;
 
   nvvk::DescriptorSetBindings m_rtDescSetLayoutBind;
