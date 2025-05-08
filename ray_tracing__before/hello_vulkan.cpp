@@ -728,6 +728,7 @@ void HelloVulkan::createRtPipeline()
     eMiss2,
     eClosestHit,
     eAnyHit,
+    eAnyHit2,
     eShaderGroupCount
   };
 
@@ -753,9 +754,13 @@ void HelloVulkan::createRtPipeline()
   stage.stage   = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
   stages[eClosestHit] = stage;
   // Hit Group - Any Hit
-  stage.module = nvvk::createShaderModule(m_device, nvh::loadFile("spv/raytrace.rahit.spv", true, defaultSearchPaths, true));
+  stage.module = nvvk::createShaderModule(m_device, nvh::loadFile("spv/raytrace_0.rahit.spv", true, defaultSearchPaths, true));
   stage.stage     = VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
   stages[eAnyHit] = stage;
+  //
+  stage.module = nvvk::createShaderModule(m_device, nvh::loadFile("spv/raytrace_1.rahit.spv", true, defaultSearchPaths, true));
+  stage.stage     = VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
+  stages[eAnyHit2] = stage;
 
   // Shader groups
   VkRayTracingShaderGroupCreateInfoKHR group{VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR};
@@ -785,6 +790,13 @@ void HelloVulkan::createRtPipeline()
   group.generalShader    = VK_SHADER_UNUSED_KHR;
   group.closestHitShader = eClosestHit;
   group.anyHitShader     = eAnyHit;
+  m_rtShaderGroups.push_back(group);
+
+  // Payload 1
+  group.type             = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+  group.generalShader    = VK_SHADER_UNUSED_KHR;
+  group.closestHitShader = VK_SHADER_UNUSED_KHR;
+  group.anyHitShader     = eAnyHit2;
   m_rtShaderGroups.push_back(group);
 
   // Push constant: we want to be able to update constants used by the shaders

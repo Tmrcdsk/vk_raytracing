@@ -16,7 +16,6 @@ layout(location = 0) rayPayloadInEXT hitPayload prd;
 layout(location = 1) rayPayloadInEXT shadowPayload prd;
 #endif
 
-layout(location = 0) rayPayloadInEXT hitPayload prd;
 layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; }; // Positions of an object
 layout(buffer_reference, scalar) buffer Indices { uint i[]; }; // Triangle indices
 layout(buffer_reference, scalar) buffer Materials { WaveFrontMaterial m[]; }; // Array of all materials on an object
