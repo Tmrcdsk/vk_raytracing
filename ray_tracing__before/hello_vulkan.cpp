@@ -907,6 +907,8 @@ void HelloVulkan::createRtShaderBindingTable()
 void HelloVulkan::raytrace(const VkCommandBuffer& cmdBuf, const glm::vec4& clearColor)
 {
   updateFrame();
+  if(m_pcRay.frame >= m_maxFrames)
+    return;
 
   m_debug.beginLabel(cmdBuf, "Ray trace");
   // Initializing push constant values

@@ -154,6 +154,9 @@ public:
   std::vector<VkRayTracingShaderGroupCreateInfoKHR> m_rtShaderGroups;
   VkPipelineLayout                                  m_rtPipelineLayout;
   VkPipeline                                        m_rtPipeline;
+
+  int m_maxFrames{100};
+
   // Push constant for ray tracer
   PushConstantRay m_pcRay{};
 

@@ -70,6 +70,7 @@ void renderUI(HelloVulkan& helloVk)
     changed |= ImGui::SliderFloat("Intensity", &pc.lightIntensity, 0.f, 150.f);
   }
 
+  changed |= ImGui::SliderInt("Max Frames", &helloVk.m_maxFrames, 1, 100);
   if(changed)
     helloVk.resetFrame();
 }
