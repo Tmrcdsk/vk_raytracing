@@ -56,16 +56,22 @@ static void onErrorCallback(int error, const char* description)
 // Extra UI
 void renderUI(HelloVulkan& helloVk)
 {
-  ImGuiH::CameraWidget();
+  bool changed = false;
+
+  changed |= ImGuiH::CameraWidget();
   if(ImGui::CollapsingHeader("Light"))
   {
-    ImGui::RadioButton("Point", &helloVk.m_pcRaster.lightType, 0);
+    auto& pc = helloVk.m_pcRaster;
+    changed |= ImGui::RadioButton("Point", &pc.lightType, 0);
     ImGui::SameLine();
-    ImGui::RadioButton("Infinite", &helloVk.m_pcRaster.lightType, 1);
+    changed |= ImGui::RadioButton("Infinite", &pc.lightType, 1);
 
-    ImGui::SliderFloat3("Position", &helloVk.m_pcRaster.lightPosition.x, -20.f, 20.f);
-    ImGui::SliderFloat("Intensity", &helloVk.m_pcRaster.lightIntensity, 0.f, 150.f);
+    changed |= ImGui::SliderFloat3("Position", &pc.lightPosition.x, -20.f, 20.f);
+    changed |= ImGui::SliderFloat("Intensity", &pc.lightIntensity, 0.f, 150.f);
   }
+
+  if(changed)
+    helloVk.resetFrame();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -205,8 +211,14 @@ int main(int argc, char** argv)
     if(helloVk.showGui())
     {
       ImGuiH::Panel::Begin();
-      ImGui::ColorEdit3("Clear color", reinterpret_cast<float*>(&clearColor));
-      ImGui::Checkbox("Ray Tracer mode", &useRaytracer); // Switch between raster and ray tracing
+      bool changed = false;
+      // Edit 3 floats representing a color
+      changed |= ImGui::ColorEdit3("Clear color", reinterpret_cast<float*>(&clearColor));
+      // Switch between raster and ray tracing
+      changed |= ImGui::Checkbox("Ray Tracer mode", &useRaytracer);
+      if(changed)
+        helloVk.resetFrame();
+
       renderUI(helloVk);
       ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
       ImGuiH::Control::Info("", "", "(F10) Toggle Pane", ImGuiH::Control::Flags::Disabled);
