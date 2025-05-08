@@ -3,6 +3,7 @@
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 
+#include "random.glsl"
 #include "raycommon.glsl"
 #include "host_device.h"
 
@@ -11,10 +12,21 @@ layout(location = 0) rayPayloadEXT hitPayload prd;
 layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
 layout(binding = 1, set = 0, rgba32f) uniform image2D image;
 layout(set = 1, binding = eGlobals) uniform _GlobalUniforms { GlobalUniforms uni; };
+layout(push_constant) uniform _PushConstantRay { PushConstantRay pcRay; };
 
 void main() 
 {
-  const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
+  // Initialize the random number
+  uint seed = tea(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, pcRay.frame);
+
+  float r1 = rnd(seed);
+  float r2 = rnd(seed);
+  // Subpixel jitter: send the ray through a different position inside the pixel
+  // each time, to provide antialiasing.
+  vec2 subpixel_jitter = pcRay.frame == 0 ? vec2(0.5, 0.5) : vec2(r1, r2);
+
+  const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + subpixel_jitter;
+
   const vec2 inUV = pixelCenter / vec2(gl_LaunchSizeEXT.xy);
   vec2 d = inUV * 2.0 - 1.0;
 
