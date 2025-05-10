@@ -147,22 +147,10 @@ void main()
     vec3 origin = worldPos;
     vec3 rayDir = reflect(gl_WorldRayDirectionEXT, worldNrm);
     prd.attenuation *= mat.specular;
-
-    prd.depth++;
-    traceRayEXT(topLevelAS,         // acceleration structure
-            gl_RayFlagsNoneEXT,  // rayFlags
-            0xFF,               // cullMask
-            0,                  // sbtRecordOffset
-            0,                  // sbtRecordStride
-            0,                  // missIndex
-            origin,             // ray origin
-            0.1,                // ray min range
-            rayDir,             // ray direction
-            100000.0,           // ray max range
-            0                   // payload (location = 0)
-    );
-    prd.depth--;
+    prd.done      = 0;
+    prd.rayOrigin = origin;
+    prd.rayDir    = rayDir;
   }
 
-  prd.hitValue += vec3(lightIntensity * attenuation * (diffuse + specular)) * prd.attenuation;
+  prd.hitValue = vec3(lightIntensity * attenuation * (diffuse + specular));
 }
