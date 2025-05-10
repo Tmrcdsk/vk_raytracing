@@ -25,6 +25,8 @@
 #include "obj_loader.h"
 #include "stb_image.h"
 
+#define VMA_IMPLEMENTATION
+
 #include "hello_vulkan.h"
 #include "nvh/alignment.hpp"
 #include "nvh/cameramanipulator.hpp"
