@@ -142,7 +142,7 @@ void main()
   }
 
   // Reflection
-  if(mat.illum == 3 && prd.depth < 10)
+  if(mat.illum == 3)
   {
     vec3 origin = worldPos;
     vec3 rayDir = reflect(gl_WorldRayDirectionEXT, worldNrm);

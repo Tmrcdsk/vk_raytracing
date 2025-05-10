@@ -152,5 +152,5 @@ public:
   VkStridedDeviceAddressRegionKHR m_callRegion{};
 
   // Push constant for ray tracer
-  PushConstantRay m_pcRay{};
+  PushConstantRay m_pcRay{{}, {}, 0, 0, 10};
 };

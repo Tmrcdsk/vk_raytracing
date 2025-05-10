@@ -215,6 +215,7 @@ int main(int argc, char** argv)
       ImGui::Checkbox("Ray Tracer mode", &useRaytracer);  // Switch between raster and ray tracing
 
       renderUI(helloVk);
+      ImGui::SliderInt("Max Depth", &helloVk.m_pcRay.maxDepth, 1, 50);
       ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
       ImGuiH::Control::Info("", "", "(F10) Toggle Pane", ImGuiH::Control::Flags::Disabled);
       ImGuiH::Panel::End();
