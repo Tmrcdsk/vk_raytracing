@@ -19,11 +19,26 @@
 
 #pragma once
 
+// #VKRay
+// Choosing the allocator to use
+#define ALLOC_DMA
+//#define ALLOC_DEDICATED
+//#define ALLOC_VMA
+#include <nvvk/resourceallocator_vk.hpp>
+
+#if defined(ALLOC_DMA)
+#include <nvvk/memallocator_dma_vk.hpp>
+using Allocator = nvvk::ResourceAllocatorDma;
+#elif defined(ALLOC_VMA)
+#include <nvvk/memallocator_vma_vk.hpp>
+using Allocator = nvvk::ResourceAllocatorVma;
+#else
+using Allocator = nvvk::ResourceAllocatorDedicated;
+#endif
+
 #include "nvvkhl/appbase_vk.hpp"
 #include "nvvk/debug_util_vk.hpp"
 #include "nvvk/descriptorsets_vk.hpp"
-#include "nvvk/memallocator_dma_vk.hpp"
-#include "nvvk/resourceallocator_vk.hpp"
 #include "shaders/host_device.h"
 
 // #VKRay
@@ -99,7 +114,7 @@ public:
   std::vector<nvvk::Texture> m_textures;  // vector of all textures of the scene
 
 
-  nvvk::ResourceAllocatorDma m_alloc;  // Allocator for buffer, images, acceleration structures
+  Allocator m_alloc;  // Allocator for buffer, images, acceleration structures
   nvvk::DebugUtil            m_debug;  // Utility to name objects
 
 
