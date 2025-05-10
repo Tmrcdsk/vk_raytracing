@@ -160,8 +160,13 @@ int main(int argc, char** argv)
   helloVk.initGUI(0);  // Using sub-pass 0
 
   // Creation of the example
-  helloVk.loadModel(nvh::findFile("media/scenes/Medieval_building.obj", defaultSearchPaths, true));
-  helloVk.loadModel(nvh::findFile("media/scenes/plane.obj", defaultSearchPaths, true));
+  helloVk.loadModel(nvh::findFile("media/scenes/cube.obj", defaultSearchPaths, true),
+                    glm::translate(glm::mat4(1), glm::vec3(-2, 0, 0)) * glm::scale(glm::mat4(1.f), glm::vec3(.1f, 5.f, 5.f)));
+  helloVk.loadModel(nvh::findFile("media/scenes/cube.obj", defaultSearchPaths, true),
+                    glm::translate(glm::mat4(1), glm::vec3(2, 0, 0)) * glm::scale(glm::mat4(1.f), glm::vec3(.1f, 5.f, 5.f)));
+  helloVk.loadModel(nvh::findFile("media/scenes/cube_multi.obj", defaultSearchPaths, true));
+  helloVk.loadModel(nvh::findFile("media/scenes/plane.obj", defaultSearchPaths, true),
+                    glm::translate(glm::mat4(1), glm::vec3(0, -1, 0)));
 
   helloVk.createOffscreenRender();
   helloVk.createDescriptorSetLayout();
