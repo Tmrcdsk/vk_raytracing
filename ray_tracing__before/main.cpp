@@ -23,6 +23,7 @@
 // at the top of imgui.cpp.
 
 #include <array>
+#include <random>
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "backends/imgui_impl_glfw.h"
@@ -167,10 +168,23 @@ int main(int argc, char** argv)
   helloVk.initGUI(0);  // Using sub-pass 0
 
   // Creation of the example
-  helloVk.loadModel(nvh::findFile("media/scenes/wuson.obj", defaultSearchPaths, true));
-  helloVk.loadModel(nvh::findFile("media/scenes/sphere.obj", defaultSearchPaths, true),
-                    glm::scale(glm::mat4(1.f), glm::vec3(1.5f)) * glm::translate(glm::mat4(1), glm::vec3(0.0f, 1.0f, 0.0f)));
+  helloVk.loadModel(nvh::findFile("media/scenes/cube.obj", defaultSearchPaths, true));
+  helloVk.loadModel(nvh::findFile("media/scenes/cube_multi.obj", defaultSearchPaths, true));
   helloVk.loadModel(nvh::findFile("media/scenes/plane.obj", defaultSearchPaths, true));
+
+  std::random_device              rd;         // Will be used to obtain a seed for the random number engine
+  std::mt19937                    gen(rd());  // Standard mersenne_twister_engine seeded with rd()
+  std::normal_distribution<float> dis(1.0f, 1.0f);
+  std::normal_distribution<float> disn(0.05f, 0.05f);
+
+  for(uint32_t n = 0; n < 2000; ++n)
+  {
+    float     scale = fabsf(disn(gen));
+    glm::mat4 mat   = glm::translate(glm::mat4(1), glm::vec3{dis(gen), 2.0f + dis(gen), dis(gen)});
+    mat             = mat * glm::rotate(glm::mat4(1.f), dis(gen), glm::vec3(1.f, 0.f, 0.f));
+    mat             = mat * glm::scale(glm::mat4(1.f), glm::vec3(scale));
+    helloVk.m_instances.push_back({mat, n % 2});
+  }
 
   helloVk.createOffscreenRender();
   helloVk.createDescriptorSetLayout();
