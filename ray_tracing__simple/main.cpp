@@ -160,7 +160,11 @@ int main(int argc, char** argv)
   helloVk.initGUI(0);  // Using sub-pass 0
 
   // Creation of the example
-  helloVk.loadModel(nvh::findFile("media/scenes/Medieval_building.obj", defaultSearchPaths, true));
+  helloVk.loadModel(nvh::findFile("media/scenes/wuson.obj", defaultSearchPaths, true),
+                    glm::translate(glm::mat4(1), glm::vec3(-1, 0, 0)));
+
+  helloVk.m_instances.push_back({glm::translate(glm::mat4(1), glm::vec3(1, 0, 0)), 0});  // Adding an instance of the Wuson
+
   helloVk.loadModel(nvh::findFile("media/scenes/plane.obj", defaultSearchPaths, true));
 
   helloVk.createOffscreenRender();
