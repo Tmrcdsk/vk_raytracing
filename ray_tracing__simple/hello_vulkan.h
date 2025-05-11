@@ -29,6 +29,12 @@
 // #VKRay
 #include "nvvk/raytraceKHR_vk.hpp"
 
+
+#define USE_SBT_WRAPPER
+#ifdef USE_SBT_WRAPPER
+#include "nvvk/sbtwrapper_vk.hpp"
+#endif
+
 //--------------------------------------------------------------------------------------------------
 // Simple rasterizer of OBJ objects
 // - Each OBJ loaded are stored in an `ObjModel` and referenced by a `ObjInstance`
@@ -146,11 +152,15 @@ public:
   VkPipelineLayout                                  m_rtPipelineLayout;
   VkPipeline                                        m_rtPipeline;
 
+#ifdef USE_SBT_WRAPPER
+  nvvk::SBTWrapper m_sbtWrapper;
+#else
   nvvk::Buffer                    m_rtSBTBuffer;
   VkStridedDeviceAddressRegionKHR m_rgenRegion{};
   VkStridedDeviceAddressRegionKHR m_missRegion{};
   VkStridedDeviceAddressRegionKHR m_hitRegion{};
   VkStridedDeviceAddressRegionKHR m_callRegion{};
+#endif
 
   // Push constant for ray tracer
   PushConstantRay m_pcRay{};

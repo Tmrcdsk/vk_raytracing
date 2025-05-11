@@ -388,7 +388,11 @@ void HelloVulkan::destroyResources()
   vkDestroyPipelineLayout(m_device, m_rtPipelineLayout, nullptr);
   vkDestroyDescriptorPool(m_device, m_rtDescPool, nullptr);
   vkDestroyDescriptorSetLayout(m_device, m_rtDescSetLayout, nullptr);
+#ifdef USE_SBT_WRAPPER
+  m_sbtWrapper.destroy();
+#else
   m_alloc.destroy(m_rtSBTBuffer);
+#endif
 
   m_alloc.deinit();
 }
@@ -592,6 +596,10 @@ void HelloVulkan::initRayTracing()
   vkGetPhysicalDeviceProperties2(m_physicalDevice, &prop2);
 
   m_rtBuilder.setup(m_device, &m_alloc, m_graphicsQueueIndex);
+
+#ifdef USE_SBT_WRAPPER
+  m_sbtWrapper.setup(m_device, m_graphicsQueueIndex, &m_alloc, m_rtProperties);
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -842,6 +850,15 @@ void HelloVulkan::createRtPipeline()
     throw std::runtime_error("Device fails to support ray recursion (m_rtProperties.maxRayRecursionDepth <= 1)");
   }
 
+#ifdef USE_SBT_WRAPPER
+  // Find handle indices and add data
+  m_sbtWrapper.addIndices(rayPipelineInfo);
+  m_sbtWrapper.addData(nvvk::SBTWrapper::eHit, 1, m_hitShaderRecord[0]);
+  m_sbtWrapper.create(m_rtPipeline);
+#else
+  //createRtShaderBindingTable();
+#endif
+
   for(auto& s : stages)
     vkDestroyShaderModule(m_device, s.module, nullptr);
 }
@@ -851,6 +868,7 @@ void HelloVulkan::createRtPipeline()
 // - getting all shader handles and write them in a SBT buffer
 // - Besides exception, this could be always done like this
 //
+#ifndef USE_SBT_WRAPPER
 void HelloVulkan::createRtShaderBindingTable()
 {
   uint32_t missCount{2};
@@ -865,7 +883,7 @@ void HelloVulkan::createRtShaderBindingTable()
   m_rgenRegion.size = m_rgenRegion.stride;  // The size member of pRayGenShaderBindingTable must be equal to its stride member
   m_missRegion.stride = handleSizeAligned;
   m_missRegion.size   = nvh::align_up(missCount * handleSizeAligned, m_rtProperties.shaderGroupBaseAlignment);
-  m_hitRegion.stride  = handleSizeAligned;
+  m_hitRegion.stride  = nvh::align_up(handleSize + sizeof(HitRecordBuffer), m_rtProperties.shaderGroupHandleAlignment);
   m_hitRegion.size    = nvh::align_up(hitCount * handleSizeAligned, m_rtProperties.shaderGroupBaseAlignment);
 
   // Get the shader group handles
@@ -908,15 +926,19 @@ void HelloVulkan::createRtShaderBindingTable()
   }
   // Hit
   pData = pSBTBuffer + m_rgenRegion.size + m_missRegion.size;
-  for(uint32_t c = 0; c < hitCount; c++)
-  {
-    memcpy(pData, getHandle(handleIdx++), handleSize);
-    pData += m_hitRegion.stride;
-  }
+  memcpy(pData, getHandle(handleIdx++), handleSize);
+
+  auto recordDataSize = sizeof(HitRecordBuffer);
+  // hit 1
+  pData = pSBTBuffer + m_rgenRegion.size + m_missRegion.size + m_hitRegion.stride;
+  memcpy(pData, getHandle(handleIdx++), handleSize);
+  pData += handleSize;
+  memcpy(pData, &m_hitShaderRecord[0], recordDataSize);  // Hit 1 data
 
   m_alloc.unmap(m_rtSBTBuffer);
   m_alloc.finalizeAndReleaseStaging();
 }
+#endif
 
 //--------------------------------------------------------------------------------------------------
 // Ray Tracing the scene
@@ -939,7 +961,12 @@ void HelloVulkan::raytrace(const VkCommandBuffer& cmdBuf, const glm::vec4& clear
                      0, sizeof(PushConstantRay), &m_pcRay);
 
 
+#ifdef USE_SBT_WRAPPER
+  auto& regions = m_sbtWrapper.getRegions();
+  vkCmdTraceRaysKHR(cmdBuf, &regions[0], &regions[1], &regions[2], &regions[3], m_size.width, m_size.height, 1);
+#else
   vkCmdTraceRaysKHR(cmdBuf, &m_rgenRegion, &m_missRegion, &m_hitRegion, &m_callRegion, m_size.width, m_size.height, 1);
+#endif
 
 
   m_debug.endLabel(cmdBuf);
