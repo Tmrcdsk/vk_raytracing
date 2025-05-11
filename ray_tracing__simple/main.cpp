@@ -167,6 +167,9 @@ int main(int argc, char** argv)
 
   helloVk.loadModel(nvh::findFile("media/scenes/plane.obj", defaultSearchPaths, true));
 
+  helloVk.m_instances[0].hitgroup = 1;
+  helloVk.m_instances[1].hitgroup = 1;
+
   helloVk.createOffscreenRender();
   helloVk.createDescriptorSetLayout();
   helloVk.createGraphicsPipeline();
