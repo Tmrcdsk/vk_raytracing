@@ -67,6 +67,7 @@ public:
   {
     glm::mat4 transform;    // Matrix of the instance
     uint32_t  objIndex{0};  // Model index reference
+    int       hitgroup{0};  // Hit group of the instance
   };
 
 

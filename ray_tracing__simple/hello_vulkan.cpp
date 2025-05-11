@@ -671,7 +671,7 @@ void HelloVulkan::createTopLevelAS()
     rayInst.accelerationStructureReference = m_rtBuilder.getBlasDeviceAddress(inst.objIndex);
     rayInst.flags                          = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
     rayInst.mask                           = 0xFF;       //  Only be hit if rayMask & instance.mask != 0
-    rayInst.instanceShaderBindingTableRecordOffset = 0;  // We will use the same hit group for all objects
+    rayInst.instanceShaderBindingTableRecordOffset = inst.hitgroup;  // We will use the same hit group for all objects
     tlas.emplace_back(rayInst);
   }
   m_rtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
