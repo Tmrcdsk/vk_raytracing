@@ -5,8 +5,9 @@
 #include "raycommon.glsl"
 
 layout(location = 0) rayPayloadInEXT hitPayload prd;
+layout(shaderRecordEXT) buffer sr_ { vec4 shaderRec; };
 
 void main()
 {
-  prd.hitValue = vec3(1, 0, 0);
+  prd.hitValue = shaderRec.rgb;
 }

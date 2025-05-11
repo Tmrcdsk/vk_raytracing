@@ -154,4 +154,10 @@ public:
 
   // Push constant for ray tracer
   PushConstantRay m_pcRay{};
+
+  struct HitRecordBuffer
+  {
+    glm::vec4 color;
+  };
+  std::vector<HitRecordBuffer> m_hitShaderRecord;
 };
