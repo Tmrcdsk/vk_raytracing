@@ -167,11 +167,13 @@ int main(int argc, char** argv)
 
   helloVk.loadModel(nvh::findFile("media/scenes/plane.obj", defaultSearchPaths, true));
 
-  helloVk.m_hitShaderRecord.resize(1);
-  helloVk.m_hitShaderRecord[0].color = glm::vec4(1, 1, 0, 0); // Yellow
+  helloVk.m_hitShaderRecord.resize(2);
+  helloVk.m_hitShaderRecord[0].color = glm::vec4(0, 1, 0, 0);  // Green
+  helloVk.m_hitShaderRecord[1].color = glm::vec4(0, 1, 1, 0);  // Cyan
 
-  helloVk.m_instances[0].hitgroup = 1;
-  helloVk.m_instances[1].hitgroup = 1;
+  helloVk.m_instances[0].hitgroup = 1; // Wuson 0
+  helloVk.m_instances[1].hitgroup = 2; // Wuson 1
+  helloVk.m_instances[2].hitgroup = 0; // Plane
 
   helloVk.createOffscreenRender();
   helloVk.createDescriptorSetLayout();

@@ -797,11 +797,17 @@ void HelloVulkan::createRtPipeline()
   m_rtShaderGroups.push_back(group);
 
   // closest hit shader
+  // Hit 0
   group.type             = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
   group.generalShader    = VK_SHADER_UNUSED_KHR;
   group.closestHitShader = eClosestHit;
   m_rtShaderGroups.push_back(group);
-  // closest hit shader 2
+  // Hit 1
+  group.type             = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+  group.generalShader    = VK_SHADER_UNUSED_KHR;
+  group.closestHitShader = eClosestHit2;
+  m_rtShaderGroups.push_back(group);
+  // Hit 2
   group.type             = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
   group.generalShader    = VK_SHADER_UNUSED_KHR;
   group.closestHitShader = eClosestHit2;
@@ -854,9 +860,10 @@ void HelloVulkan::createRtPipeline()
   // Find handle indices and add data
   m_sbtWrapper.addIndices(rayPipelineInfo);
   m_sbtWrapper.addData(nvvk::SBTWrapper::eHit, 1, m_hitShaderRecord[0]);
+  m_sbtWrapper.addData(nvvk::SBTWrapper::eHit, 2, m_hitShaderRecord[1]);
   m_sbtWrapper.create(m_rtPipeline);
 #else
-  //createRtShaderBindingTable();
+  createRtShaderBindingTable();
 #endif
 
   for(auto& s : stages)
@@ -872,7 +879,7 @@ void HelloVulkan::createRtPipeline()
 void HelloVulkan::createRtShaderBindingTable()
 {
   uint32_t missCount{2};
-  uint32_t hitCount{2};
+  uint32_t hitCount{3};
   auto     handleCount = 1 + missCount + hitCount;
   uint32_t handleSize  = m_rtProperties.shaderGroupHandleSize;
 
@@ -882,9 +889,9 @@ void HelloVulkan::createRtShaderBindingTable()
   m_rgenRegion.stride = nvh::align_up(handleSizeAligned, m_rtProperties.shaderGroupBaseAlignment);
   m_rgenRegion.size = m_rgenRegion.stride;  // The size member of pRayGenShaderBindingTable must be equal to its stride member
   m_missRegion.stride = handleSizeAligned;
-  m_missRegion.size   = nvh::align_up(missCount * handleSizeAligned, m_rtProperties.shaderGroupBaseAlignment);
+  m_missRegion.size   = nvh::align_up(missCount * m_missRegion.stride, m_rtProperties.shaderGroupBaseAlignment);
   m_hitRegion.stride  = nvh::align_up(handleSize + sizeof(HitRecordBuffer), m_rtProperties.shaderGroupHandleAlignment);
-  m_hitRegion.size    = nvh::align_up(hitCount * handleSizeAligned, m_rtProperties.shaderGroupBaseAlignment);
+  m_hitRegion.size    = nvh::align_up(hitCount * m_hitRegion.stride, m_rtProperties.shaderGroupBaseAlignment);
 
   // Get the shader group handles
   uint32_t             dataSize = handleCount * handleSize;
@@ -934,6 +941,12 @@ void HelloVulkan::createRtShaderBindingTable()
   memcpy(pData, getHandle(handleIdx++), handleSize);
   pData += handleSize;
   memcpy(pData, &m_hitShaderRecord[0], recordDataSize);  // Hit 1 data
+
+  // hit 2
+  pData = pSBTBuffer + m_rgenRegion.size + m_missRegion.size + (2 * m_hitRegion.stride);
+  memcpy(pData, getHandle(handleIdx++), handleSize);
+  pData += handleSize;
+  memcpy(pData, &m_hitShaderRecord[1], recordDataSize);  // Hit 2 data
 
   m_alloc.unmap(m_rtSBTBuffer);
   m_alloc.finalizeAndReleaseStaging();
