@@ -651,6 +651,35 @@ auto HelloVulkan::objectToVkGeometryKHR(const ObjModel& model)
 }
 
 //--------------------------------------------------------------------------------------------------
+// Returning the ray tracing geometry used for the BLAS, containing all spheres
+//
+auto HelloVulkan::sphereToVkGeometryKHR()
+{
+  VkDeviceAddress dataAddress = nvvk::getBufferDeviceAddress(m_device, m_spheresAabbBuffer.buffer);
+
+  VkAccelerationStructureGeometryAabbsDataKHR aabbs{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR};
+  aabbs.data.deviceAddress = dataAddress;
+  aabbs.stride             = sizeof(Aabb);
+
+  // Setting up the build info of the acceleration (C version, c++ gives wrong type)
+  VkAccelerationStructureGeometryKHR asGeom{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
+  asGeom.geometryType   = VK_GEOMETRY_TYPE_AABBS_KHR;
+  asGeom.flags          = VK_GEOMETRY_OPAQUE_BIT_KHR;
+  asGeom.geometry.aabbs = aabbs;
+
+  VkAccelerationStructureBuildRangeInfoKHR offset{};
+  offset.firstVertex     = 0;
+  offset.primitiveCount  = (uint32_t)m_spheres.size();  // Nb aabb
+  offset.primitiveOffset = 0;
+  offset.transformOffset = 0;
+
+  nvvk::RaytracingBuilderKHR::BlasInput input;
+  input.asGeometry.emplace_back(asGeom);
+  input.asBuildOffsetInfo.emplace_back(offset);
+  return input;
+}
+
+//--------------------------------------------------------------------------------------------------
 //
 //
 void HelloVulkan::createBottomLevelAS()
@@ -1062,33 +1091,4 @@ void HelloVulkan::createSpheres(uint32_t nbSpheres)
   ObjInstance instance{};
   instance.objIndex = static_cast<uint32_t>(m_objModel.size());
   m_instances.emplace_back(instance);
-}
-
-//--------------------------------------------------------------------------------------------------
-// Returning the ray tracing geometry used for the BLAS, containing all spheres
-//
-auto HelloVulkan::sphereToVkGeometryKHR()
-{
-  VkDeviceAddress dataAddress = nvvk::getBufferDeviceAddress(m_device, m_spheresAabbBuffer.buffer);
-
-  VkAccelerationStructureGeometryAabbsDataKHR aabbs{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR};
-  aabbs.data.deviceAddress = dataAddress;
-  aabbs.stride             = sizeof(Aabb);
-
-  // Setting up the build info of the acceleration (C version, c++ gives wrong type)
-  VkAccelerationStructureGeometryKHR asGeom{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
-  asGeom.geometryType   = VK_GEOMETRY_TYPE_AABBS_KHR;
-  asGeom.flags          = VK_GEOMETRY_OPAQUE_BIT_KHR;
-  asGeom.geometry.aabbs = aabbs;
-
-  VkAccelerationStructureBuildRangeInfoKHR offset{};
-  offset.firstVertex     = 0;
-  offset.primitiveCount  = (uint32_t)m_spheres.size(); // Nb aabb
-  offset.primitiveOffset = 0;
-  offset.transformOffset = 0;
-
-  nvvk::RaytracingBuilderKHR::BlasInput input;
-  input.asGeometry.emplace_back(asGeom);
-  input.asBuildOffsetInfo.emplace_back(offset);
-  return input;
 }
