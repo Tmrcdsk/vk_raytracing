@@ -113,5 +113,19 @@ struct WaveFrontMaterial  // See ObjLoader, copy of MaterialObj, could be compre
   int   textureId;
 };
 
+struct Sphere
+{
+  vec3  center;
+  float radius;
+};
+
+struct Aabb
+{
+  vec3 minimum;
+  vec3 maximum;
+};
+
+#define KIND_SPHERE 0
+#define KIND_CUBE 1
 
 #endif

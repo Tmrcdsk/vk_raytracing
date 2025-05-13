@@ -153,4 +153,13 @@ public:
 
   // Push constant for ray tracer
   PushConstantRay m_pcRay{};
+
+  std::vector<Sphere> m_spheres;                // All spheres
+  nvvk::Buffer        m_spheresBuffer;          // Buffer holding the spheres
+  nvvk::Buffer        m_spheresAabbBuffer;      // Buffer of all Aabb
+  nvvk::Buffer        m_spheresMatColorBuffer;  // Multiple materials
+  nvvk::Buffer        m_spheresMatIndexBuffer;  // Define which sphere uses which material
+
+  void createSpheres(uint32_t nbSpheres);
+  auto sphereToVkGeometryKHR();
 };
