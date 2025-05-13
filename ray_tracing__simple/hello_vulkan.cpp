@@ -114,6 +114,9 @@ void HelloVulkan::createDescriptorSetLayout()
   // Textures
   m_descSetLayoutBind.addBinding(SceneBindings::eTextures, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, nbTxt,
                                  VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+  // Implicit geometries
+  m_descSetLayoutBind.addBinding(eImplicit, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
+                                 VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR);
 
 
   m_descSetLayout = m_descSetLayoutBind.createLayout(m_device);
@@ -142,6 +145,9 @@ void HelloVulkan::updateDescriptorSet()
     diit.emplace_back(texture.descriptor);
   }
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, SceneBindings::eTextures, diit.data()));
+
+  VkDescriptorBufferInfo dbiSpheres{m_spheresBuffer.buffer, 0, VK_WHOLE_SIZE};
+  writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, eImplicit, &dbiSpheres));
 
   // Writing the information
   vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
