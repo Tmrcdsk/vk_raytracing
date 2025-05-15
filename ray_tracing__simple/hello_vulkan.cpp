@@ -114,6 +114,8 @@ void HelloVulkan::createDescriptorSetLayout()
   m_descSetLayoutBind.addBinding(SceneBindings::eTextures, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, nbTxt,
                                  VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
 
+  // The top level acceleration structure
+  m_descSetLayoutBind.addBinding(eTlas, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
 
   m_descSetLayout = m_descSetLayoutBind.createLayout(m_device);
   m_descPool      = m_descSetLayoutBind.createPool(m_device, 1);
@@ -141,6 +143,13 @@ void HelloVulkan::updateDescriptorSet()
     diit.emplace_back(texture.descriptor);
   }
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, SceneBindings::eTextures, diit.data()));
+
+  VkAccelerationStructureKHR tlas = m_rtBuilder.getAccelerationStructure();
+  VkWriteDescriptorSetAccelerationStructureKHR descASInfo{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR};
+  descASInfo.accelerationStructureCount = 1;
+  descASInfo.pAccelerationStructures    = &tlas;
+  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, eTlas, &descASInfo));
+
 
   // Writing the information
   vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);

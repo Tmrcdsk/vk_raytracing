@@ -43,12 +43,8 @@ using uint = unsigned int;
 START_BINDING(SceneBindings)
   eGlobals  = 0,  // Global uniform containing camera matrices
   eObjDescs = 1,  // Access to the object descriptions
-  eTextures = 2   // Access to textures
-END_BINDING();
-
-START_BINDING(RtxBindings)
-  eTlas     = 0,  // Top-level acceleration structure
-  eOutImage = 1   // Ray tracer output image
+  eTextures = 2,  // Access to textures
+  eTlas     = 3   // Top-level acceleration structure
 END_BINDING();
 // clang-format on
 
