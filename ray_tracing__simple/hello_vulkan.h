@@ -24,6 +24,7 @@
 #include "nvvk/descriptorsets_vk.hpp"
 #include "nvvk/memallocator_dma_vk.hpp"
 #include "nvvk/resourceallocator_vk.hpp"
+#include "nvvk/sbtwrapper_vk.hpp"
 #include "shaders/host_device.h"
 
 // #VKRay
@@ -75,8 +76,11 @@ public:
       {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1},  // Identity matrix
       {10.f, 15.f, 8.f},                                 // light position
       0,                                                 // instance Id
+      {-1.f, -1.f, -1.f},                                // lightDirection
       100.f,                                             // light intensity
-      0                                                  // light type
+      {cos(glm::radians(12.5f))},                        // lightSpotCutoff
+      {cos(glm::radians(17.5f))},                        // lightSpotOuterCutoff
+      0                                                  // lightType 0: point, 1: infinite
   };
 
   // Array of objects and instances in the scene
@@ -131,7 +135,6 @@ public:
   void createRtDescriptorSet();
   void updateRtDescriptorSet();
   void createRtPipeline();
-  void createRtShaderBindingTable();
   void raytrace(const VkCommandBuffer& cmdBuf, const glm::vec4& clearColor);
 
 
@@ -145,12 +148,8 @@ public:
   VkPipelineLayout                                  m_rtPipelineLayout;
   VkPipeline                                        m_rtPipeline;
 
-  nvvk::Buffer                    m_rtSBTBuffer;
-  VkStridedDeviceAddressRegionKHR m_rgenRegion{};
-  VkStridedDeviceAddressRegionKHR m_missRegion{};
-  VkStridedDeviceAddressRegionKHR m_hitRegion{};
-  VkStridedDeviceAddressRegionKHR m_callRegion{};
-
   // Push constant for ray tracer
   PushConstantRay m_pcRay{};
+
+  nvvk::SBTWrapper m_sbtWrapper;
 };
