@@ -47,6 +47,8 @@ layout(push_constant) uniform _PushConstantRay { PushConstantRay pcRay; };
 // clang-format on
 
 
+layout(location = 0) callableDataEXT rayLight cLight;
+
 void main()
 {
   // Object data
@@ -74,22 +76,39 @@ void main()
   const vec3 nrm      = v0.nrm * barycentrics.x + v1.nrm * barycentrics.y + v2.nrm * barycentrics.z;
   const vec3 worldNrm = normalize(vec3(nrm * gl_WorldToObjectEXT));  // Transforming the normal to world space
 
-  // Vector toward the light
-  vec3  L;
-  float lightIntensity = pcRay.lightIntensity;
-  float lightDistance  = 100000.0;
+
+  cLight.inHitPosition = worldPos;
+//#define DONT_USE_CALLABLE
+#if defined(DONT_USE_CALLABLE)
   // Point light
   if(pcRay.lightType == 0)
   {
-    vec3 lDir      = pcRay.lightPosition - worldPos;
-    lightDistance  = length(lDir);
-    lightIntensity = pcRay.lightIntensity / (lightDistance * lightDistance);
-    L              = normalize(lDir);
+    vec3  lDir              = pcRay.lightPosition - cLight.inHitPosition;
+    float lightDistance     = length(lDir);
+    cLight.outIntensity     = pcRay.lightIntensity / (lightDistance * lightDistance);
+    cLight.outLightDir      = normalize(lDir);
+    cLight.outLightDistance = lightDistance;
+  }
+  else if(pcRay.lightType == 1)
+  {
+    vec3 lDir               = pcRay.lightPosition - cLight.inHitPosition;
+    cLight.outLightDistance = length(lDir);
+    cLight.outIntensity     = pcRay.lightIntensity / (cLight.outLightDistance * cLight.outLightDistance);
+    cLight.outLightDir      = normalize(lDir);
+    float theta             = dot(cLight.outLightDir, normalize(-pcRay.lightDirection));
+    float epsilon           = pcRay.lightSpotCutoff - pcRay.lightSpotOuterCutoff;
+    float spotIntensity     = clamp((theta - pcRay.lightSpotOuterCutoff) / epsilon, 0.0, 1.0);
+    cLight.outIntensity *= spotIntensity;
   }
   else  // Directional light
   {
-    L = normalize(pcRay.lightPosition);
+    cLight.outLightDir      = normalize(-pcRay.lightDirection);
+    cLight.outIntensity     = 1.0;
+    cLight.outLightDistance = 10000000;
   }
+#else
+  executeCallableEXT(pcRay.lightType, 0);
+#endif
 
   // Material of the object
   int               matIdx = matIndices.i[gl_PrimitiveID];
@@ -97,7 +116,7 @@ void main()
 
 
   // Diffuse
-  vec3 diffuse = computeDiffuse(mat, L, worldNrm);
+  vec3 diffuse = computeDiffuse(mat, cLight.outLightDir, worldNrm);
   if(mat.textureId >= 0)
   {
     uint txtId    = mat.textureId + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
@@ -109,12 +128,12 @@ void main()
   float attenuation = 1;
 
   // Tracing shadow ray only if the light is visible from the surface
-  if(dot(worldNrm, L) > 0)
+  if(dot(worldNrm, cLight.outLightDir) > 0)
   {
     float tMin   = 0.001;
-    float tMax   = lightDistance;
+    float tMax   = cLight.outLightDistance;
     vec3  origin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
-    vec3  rayDir = L;
+    vec3  rayDir = cLight.outLightDir;
     uint  flags  = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT;
     isShadowed   = true;
     traceRayEXT(topLevelAS,  // acceleration structure
@@ -137,9 +156,9 @@ void main()
     else
     {
       // Specular
-      specular = computeSpecular(mat, gl_WorldRayDirectionEXT, L, worldNrm);
+      specular = computeSpecular(mat, gl_WorldRayDirectionEXT, cLight.outLightDir, worldNrm);
     }
   }
 
-  prd.hitValue = vec3(lightIntensity * attenuation * (diffuse + specular));
+  prd.hitValue = vec3(cLight.outIntensity * attenuation * (diffuse + specular));
 }

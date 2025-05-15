@@ -57,14 +57,32 @@ static void onErrorCallback(int error, const char* description)
 void renderUI(HelloVulkan& helloVk)
 {
   ImGuiH::CameraWidget();
+  ImGui::SetNextItemOpen(true, ImGuiCond_Once);
   if(ImGui::CollapsingHeader("Light"))
   {
     ImGui::RadioButton("Point", &helloVk.m_pcRaster.lightType, 0);
     ImGui::SameLine();
-    ImGui::RadioButton("Infinite", &helloVk.m_pcRaster.lightType, 1);
+    ImGui::RadioButton("Spot", &helloVk.m_pcRaster.lightType, 1);
+    ImGui::SameLine();
+    ImGui::RadioButton("Infinite", &helloVk.m_pcRaster.lightType, 2);
 
-    ImGui::SliderFloat3("Position", &helloVk.m_pcRaster.lightPosition.x, -20.f, 20.f);
-    ImGui::SliderFloat("Intensity", &helloVk.m_pcRaster.lightIntensity, 0.f, 150.f);
+    if(helloVk.m_pcRaster.lightType < 2)
+      ImGui::SliderFloat3("Light Position", &helloVk.m_pcRaster.lightPosition.x, -20.f, 20.f);
+    if(helloVk.m_pcRaster.lightType > 0)
+      ImGui::SliderFloat3("Light Direction", &helloVk.m_pcRaster.lightDirection.x, -1.f, 1.f);
+    if(helloVk.m_pcRaster.lightType < 2)
+      ImGui::SliderFloat("Light Intensity", &helloVk.m_pcRaster.lightIntensity, 0.f, 500.f);
+    if(helloVk.m_pcRaster.lightType == 1)
+    {
+      float dCutoff    = glm::degrees(acos(helloVk.m_pcRaster.lightSpotCutoff));
+      float dOutCutoff = glm::degrees(acos(helloVk.m_pcRaster.lightSpotOuterCutoff));
+      ImGui::SliderFloat("Cutoff", &dCutoff, 0.f, 45.f);
+      ImGui::SliderFloat("OutCutoff", &dOutCutoff, 0.f, 45.f);
+      dCutoff = dCutoff > dOutCutoff ? dOutCutoff : dCutoff;
+
+      helloVk.m_pcRaster.lightSpotCutoff      = cos(glm::radians(dCutoff));
+      helloVk.m_pcRaster.lightSpotOuterCutoff = cos(glm::radians(dOutCutoff));
+    }
   }
 }
 
@@ -176,7 +194,6 @@ int main(int argc, char** argv)
   helloVk.createTopLevelAS();
   helloVk.createRtDescriptorSet();
   helloVk.createRtPipeline();
-  helloVk.createRtShaderBindingTable();
 
   helloVk.createPostDescriptor();
   helloVk.createPostPipeline();
