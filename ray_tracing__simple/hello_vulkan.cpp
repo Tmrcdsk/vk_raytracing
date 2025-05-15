@@ -623,15 +623,15 @@ void HelloVulkan::createBottomLevelAS()
 void HelloVulkan::createTopLevelAS()
 {
   std::vector<VkAccelerationStructureInstanceKHR> tlas;
-  tlas.reserve(m_instances.size());
-  for(const HelloVulkan::ObjInstance& inst : m_instances)
+  tlas.reserve(m_gltfScene.m_nodes.size());
+  for(auto& node : m_gltfScene.m_nodes)
   {
     VkAccelerationStructureInstanceKHR rayInst{};
-    rayInst.transform                      = nvvk::toTransformMatrixKHR(inst.transform);  // Position of the instance
-    rayInst.instanceCustomIndex            = inst.objIndex;                               // gl_InstanceCustomIndexEXT
-    rayInst.accelerationStructureReference = m_rtBuilder.getBlasDeviceAddress(inst.objIndex);
+    rayInst.transform                      = nvvk::toTransformMatrixKHR(node.worldMatrix);
+    rayInst.instanceCustomIndex                    = node.primMesh;  // gl_InstanceCustomIndexEXT: to find which primitive
+    rayInst.accelerationStructureReference = m_rtBuilder.getBlasDeviceAddress(node.primMesh);
     rayInst.flags                          = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-    rayInst.mask                           = 0xFF;       //  Only be hit if rayMask & instance.mask != 0
+    rayInst.mask                           = 0xFF;
     rayInst.instanceShaderBindingTableRecordOffset = 0;  // We will use the same hit group for all objects
     tlas.emplace_back(rayInst);
   }
