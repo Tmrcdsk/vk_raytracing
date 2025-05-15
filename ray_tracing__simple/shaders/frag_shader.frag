@@ -17,7 +17,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#version 450
+#version 460
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_GOOGLE_include_directive : enable
@@ -25,6 +25,8 @@
 
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 #extension GL_EXT_buffer_reference2 : require
+#extension GL_EXT_ray_tracing : enable
+#extension GL_EXT_ray_query : enable
 
 #include "wavefront.glsl"
 
@@ -50,6 +52,7 @@ layout(buffer_reference, scalar) buffer MatIndices {int i[]; }; // Material ID f
 
 layout(binding = eObjDescs, scalar) buffer ObjDesc_ { ObjDesc i[]; } objDesc;
 layout(binding = eTextures) uniform sampler2D[] textureSamplers;
+layout(binding = eTlas) uniform accelerationStructureEXT topLevelAS;
 // clang-format on
 
 
@@ -67,6 +70,7 @@ void main()
 
   // Vector toward light
   vec3  L;
+  float lightDistance;
   float lightIntensity = pcRaster.lightIntensity;
   if(pcRaster.lightType == 0)
   {
@@ -74,10 +78,12 @@ void main()
     float d        = length(lDir);
     lightIntensity = pcRaster.lightIntensity / (d * d);
     L              = normalize(lDir);
+    lightDistance  = d;
   }
   else
   {
     L = normalize(pcRaster.lightPosition);
+    lightDistance = 10000;
   }
 
 
@@ -96,4 +102,27 @@ void main()
 
   // Result
   o_color = vec4(lightIntensity * (diffuse + specular), 1);
+
+
+  // Ray Query for shadow
+  vec3  origin    = i_worldPos;
+  vec3  direction = L;  // vector to light
+  float tMin      = 0.01f;
+  float tMax      = lightDistance;
+
+  // Initializes a ray query object but does not start traversal
+  rayQueryEXT rayQuery;
+  rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, tMin, direction, tMax);
+
+  // Start traversal: return false if traversal is complete
+  while(rayQueryProceedEXT(rayQuery))
+  {
+  }
+
+  // Returns type of committed (true) intersection
+  if(rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT)
+  {
+    // Got an intersection == Shadow
+    o_color *= 0.1;
+  }
 }
