@@ -128,29 +128,7 @@ public:
   auto objectToVkGeometryKHR(const ObjModel& model);
   void createBottomLevelAS();
   void createTopLevelAS();
-  void createRtDescriptorSet();
-  void updateRtDescriptorSet();
-  void createRtPipeline();
-  void createRtShaderBindingTable();
-  void raytrace(const VkCommandBuffer& cmdBuf, const glm::vec4& clearColor);
-
 
   VkPhysicalDeviceRayTracingPipelinePropertiesKHR m_rtProperties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR};
-  nvvk::RaytracingBuilderKHR                        m_rtBuilder;
-  nvvk::DescriptorSetBindings                       m_rtDescSetLayoutBind;
-  VkDescriptorPool                                  m_rtDescPool;
-  VkDescriptorSetLayout                             m_rtDescSetLayout;
-  VkDescriptorSet                                   m_rtDescSet;
-  std::vector<VkRayTracingShaderGroupCreateInfoKHR> m_rtShaderGroups;
-  VkPipelineLayout                                  m_rtPipelineLayout;
-  VkPipeline                                        m_rtPipeline;
-
-  nvvk::Buffer                    m_rtSBTBuffer;
-  VkStridedDeviceAddressRegionKHR m_rgenRegion{};
-  VkStridedDeviceAddressRegionKHR m_missRegion{};
-  VkStridedDeviceAddressRegionKHR m_hitRegion{};
-  VkStridedDeviceAddressRegionKHR m_callRegion{};
-
-  // Push constant for ray tracer
-  PushConstantRay m_pcRay{};
+  nvvk::RaytracingBuilderKHR m_rtBuilder;
 };
