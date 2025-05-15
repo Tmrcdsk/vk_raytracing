@@ -558,15 +558,15 @@ void HelloVulkan::initRayTracing()
 }
 
 //--------------------------------------------------------------------------------------------------
-// Convert an OBJ model into the ray tracing geometry used to build the BLAS
+// Converting a GLTF primitive in the Raytracing Geometry used for the BLAS
 //
-auto HelloVulkan::objectToVkGeometryKHR(const ObjModel& model)
+auto HelloVulkan::primitiveToVkGeometry(const nvh::GltfPrimMesh& prim)
 {
   // BLAS builder requires raw device addresses.
-  VkDeviceAddress vertexAddress = nvvk::getBufferDeviceAddress(m_device, model.vertexBuffer.buffer);
-  VkDeviceAddress indexAddress  = nvvk::getBufferDeviceAddress(m_device, model.indexBuffer.buffer);
+  VkDeviceAddress vertexAddress = nvvk::getBufferDeviceAddress(m_device, m_vertexBuffer.buffer);
+  VkDeviceAddress indexAddress  = nvvk::getBufferDeviceAddress(m_device, m_indexBuffer.buffer);
 
-  uint32_t maxPrimitiveCount = model.nbIndices / 3;
+  uint32_t maxPrimitiveCount = prim.indexCount / 3;
 
   // Describe buffer as array of VertexObj.
   VkAccelerationStructureGeometryTrianglesDataKHR triangles{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR};
@@ -578,19 +578,19 @@ auto HelloVulkan::objectToVkGeometryKHR(const ObjModel& model)
   triangles.indexData.deviceAddress = indexAddress;
   // Indicate identity transform by setting transformData to null device pointer.
   //triangles.transformData = {};
-  triangles.maxVertex = model.nbVertices - 1;
+  triangles.maxVertex = prim.vertexCount - 1;
 
   // Identify the above data as containing opaque triangles.
   VkAccelerationStructureGeometryKHR asGeom{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
   asGeom.geometryType       = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-  asGeom.flags              = VK_GEOMETRY_OPAQUE_BIT_KHR;
+  asGeom.flags              = VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR;  // For AnyHit
   asGeom.geometry.triangles = triangles;
 
   // The entire array will be used to build the BLAS.
   VkAccelerationStructureBuildRangeInfoKHR offset;
-  offset.firstVertex     = 0;
+  offset.firstVertex     = prim.vertexOffset;
   offset.primitiveCount  = maxPrimitiveCount;
-  offset.primitiveOffset = 0;
+  offset.primitiveOffset = prim.firstIndex * sizeof(uint32_t);
   offset.transformOffset = 0;
 
   // Our blas is made from only one geometry, but could be made of many geometries
@@ -608,13 +608,11 @@ void HelloVulkan::createBottomLevelAS()
 {
   // BLAS - Storing each primitive in a geometry
   std::vector<nvvk::RaytracingBuilderKHR::BlasInput> allBlas;
-  allBlas.reserve(m_objModel.size());
-  for(const auto& obj : m_objModel)
+  allBlas.reserve(m_gltfScene.m_primMeshes.size());
+  for(auto& primMesh : m_gltfScene.m_primMeshes)
   {
-    auto blas = objectToVkGeometryKHR(obj);
-
-    // We could add more geometry in each BLAS, but we add only one for now
-    allBlas.emplace_back(blas);
+    auto geo = primitiveToVkGeometry(primMesh);
+    allBlas.push_back({geo});
   }
   m_rtBuilder.buildBlas(allBlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
 }

@@ -113,7 +113,7 @@ public:
 
   // #VKRay
   void initRayTracing();
-  auto objectToVkGeometryKHR(const ObjModel& model);
+  auto primitiveToVkGeometry(const nvh::GltfPrimMesh& prim);
   void createBottomLevelAS();
   void createTopLevelAS();
   void createRtDescriptorSet();
