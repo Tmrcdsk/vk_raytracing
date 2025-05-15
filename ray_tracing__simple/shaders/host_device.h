@@ -52,16 +52,16 @@ START_BINDING(RtxBindings)
 END_BINDING();
 // clang-format on
 
-
-// Information of a obj model when referenced in a shader
-struct ObjDesc
-{
-  int      txtOffset;             // Texture index offset in the array of textures
-  uint64_t vertexAddress;         // Address of the Vertex buffer
-  uint64_t indexAddress;          // Address of the index buffer
-  uint64_t materialAddress;       // Address of the material buffer
-  uint64_t materialIndexAddress;  // Address of the triangle material index buffer
-};
+// Scene buffer addresses
+  struct SceneDesc
+  {
+    uint64_t vertexAddress;    // Address of the Vertex buffer
+    uint64_t normalAddress;    // Address of the Normal buffer
+    uint64_t uvAddress;        // Address of the texture coordinates buffer
+    uint64_t indexAddress;     // Address of the triangle indices buffer
+    uint64_t materialAddress;  // Address of the Materials buffer (GltfShadeMaterial)
+    uint64_t primInfoAddress;  // Address of the mesh primitives buffer (PrimMeshInfo)
+  };
 
 // Uniform buffer set at each frame
 struct GlobalUniforms
@@ -91,26 +91,19 @@ struct PushConstantRay
   int   lightType;
 };
 
-struct Vertex  // See ObjLoader, copy of VertexObj, could be compressed for device
+// Structure used for retrieving the primitive information in the closest hit
+struct PrimMeshInfo
 {
-  vec3 pos;
-  vec3 nrm;
-  vec3 color;
-  vec2 texCoord;
+  uint indexOffset;
+  uint vertexOffset;
+  int  materialIndex;
 };
 
-struct WaveFrontMaterial  // See ObjLoader, copy of MaterialObj, could be compressed for device
+struct GltfShadeMaterial
 {
-  vec3  ambient;
-  vec3  diffuse;
-  vec3  specular;
-  vec3  transmittance;
-  vec3  emission;
-  float shininess;
-  float ior;       // index of refraction
-  float dissolve;  // 1 == opaque; 0 == fully transparent
-  int   illum;     // illumination model (see http://www.fileformat.info/format/material/)
-  int   textureId;
+  vec4 pbrBaseColorFactor;
+  vec3 emissiveFactor;
+  int  pbrBaseColorTexture;
 };
 
 

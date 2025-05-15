@@ -27,7 +27,9 @@
 #include "shaders/host_device.h"
 
 // #VKRay
+#include "nvh/gltfscene.hpp"
 #include "nvvk/raytraceKHR_vk.hpp"
+#include "nvvk/sbtwrapper_vk.hpp"
 
 //--------------------------------------------------------------------------------------------------
 // Simple rasterizer of OBJ objects
@@ -52,23 +54,15 @@ public:
   void destroyResources();
   void rasterize(const VkCommandBuffer& cmdBuff);
 
-  // The OBJ model
-  struct ObjModel
-  {
-    uint32_t     nbIndices{0};
-    uint32_t     nbVertices{0};
-    nvvk::Buffer vertexBuffer;    // Device buffer of all 'Vertex'
-    nvvk::Buffer indexBuffer;     // Device buffer of the indices forming triangles
-    nvvk::Buffer matColorBuffer;  // Device buffer of array of 'Wavefront material'
-    nvvk::Buffer matIndexBuffer;  // Device buffer of array of 'Wavefront material'
-  };
 
-  struct ObjInstance
-  {
-    glm::mat4 transform;    // Matrix of the instance
-    uint32_t  objIndex{0};  // Model index reference
-  };
-
+  nvh::GltfScene m_gltfScene;
+  nvvk::Buffer   m_vertexBuffer;
+  nvvk::Buffer   m_normalBuffer;
+  nvvk::Buffer   m_uvBuffer;
+  nvvk::Buffer   m_indexBuffer;
+  nvvk::Buffer   m_materialBuffer;
+  nvvk::Buffer   m_primInfo;
+  nvvk::Buffer   m_sceneDesc;
 
   // Information pushed at each draw call
   PushConstantRaster m_pcRaster{
@@ -78,12 +72,6 @@ public:
       100.f,                                             // light intensity
       0                                                  // light type
   };
-
-  // Array of objects and instances in the scene
-  std::vector<ObjModel>    m_objModel;   // Model on host
-  std::vector<ObjDesc>     m_objDesc;    // Model description for device access
-  std::vector<ObjInstance> m_instances;  // Scene model instances
-
 
   // Graphic pipeline
   VkPipelineLayout            m_pipelineLayout;
