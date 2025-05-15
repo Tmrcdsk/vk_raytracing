@@ -44,11 +44,11 @@ public:
   void setup(const VkInstance& instance, const VkDevice& device, const VkPhysicalDevice& physicalDevice, uint32_t queueFamily) override;
   void createDescriptorSetLayout();
   void createGraphicsPipeline();
-  void loadModel(const std::string& filename, glm::mat4 transform = glm::mat4(1));
+  void loadScene(const std::string& filename);
   void updateDescriptorSet();
   void createUniformBuffer();
   void createObjDescriptionBuffer();
-  void createTextureImages(const VkCommandBuffer& cmdBuf, const std::vector<std::string>& textures);
+  void createTextureImages(const VkCommandBuffer& cmdBuf, tinygltf::Model& gltfModel);
   void updateUniformBuffer(const VkCommandBuffer& cmdBuf);
   void onResize(int /*w*/, int /*h*/) override;
   void destroyResources();

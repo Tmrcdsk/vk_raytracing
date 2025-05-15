@@ -184,63 +184,83 @@ void HelloVulkan::createGraphicsPipeline()
 //--------------------------------------------------------------------------------------------------
 // Loading the OBJ file and setting up all buffers
 //
-void HelloVulkan::loadModel(const std::string& filename, glm::mat4 transform)
+void HelloVulkan::loadScene(const std::string& filename)
 {
-  LOGI("Loading File:  %s \n", filename.c_str());
-  ObjLoader loader;
-  loader.loadModel(filename);
+  using vkBU = VkBufferUsageFlagBits;
+  tinygltf::Model    tmodel;
+  tinygltf::TinyGLTF tcontext;
+  std::string        warn, error;
 
-  // Converting from Srgb to linear
-  for(auto& m : loader.m_materials)
+  LOGI("Loading file: %s", filename.c_str());
+  if(!tcontext.LoadASCIIFromFile(&tmodel, &error, &warn, filename))
   {
-    m.ambient  = glm::pow(m.ambient, glm::vec3(2.2f));
-    m.diffuse  = glm::pow(m.diffuse, glm::vec3(2.2f));
-    m.specular = glm::pow(m.specular, glm::vec3(2.2f));
+    assert(!"Error while loading scene");
   }
+  LOGW("%s", warn.c_str());
+  LOGE("%s", error.c_str());
 
-  ObjModel model;
-  model.nbIndices  = static_cast<uint32_t>(loader.m_indices.size());
-  model.nbVertices = static_cast<uint32_t>(loader.m_vertices.size());
+
+  m_gltfScene.importMaterials(tmodel);
+  m_gltfScene.importDrawableNodes(tmodel, nvh::GltfAttributes::Normal | nvh::GltfAttributes::Texcoord_0);
 
   // Create the buffers on Device and copy vertices, indices and materials
-  nvvk::CommandPool  cmdBufGet(m_device, m_graphicsQueueIndex);
-  VkCommandBuffer    cmdBuf          = cmdBufGet.createCommandBuffer();
-  VkBufferUsageFlags flag            = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-  VkBufferUsageFlags rayTracingFlags =  // used also for building acceleration structures
-      flag | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-  model.vertexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_vertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | rayTracingFlags);
-  model.indexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_indices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | rayTracingFlags);
-  model.matColorBuffer = m_alloc.createBuffer(cmdBuf, loader.m_materials, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | flag);
-  model.matIndexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_matIndx, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | flag);
-  // Creates all textures found and find the offset for this model
-  auto txtOffset = static_cast<uint32_t>(m_textures.size());
-  createTextureImages(cmdBuf, loader.m_textures);
+  nvvk::CommandPool cmdBufGet(m_device, m_graphicsQueueIndex);
+  VkCommandBuffer   cmdBuf = cmdBufGet.createCommandBuffer();
+
+  m_vertexBuffer = m_alloc.createBuffer(cmdBuf, m_gltfScene.m_positions,
+                                        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+                                            | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR);
+  m_indexBuffer  = m_alloc.createBuffer(cmdBuf, m_gltfScene.m_indices,
+                                        VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+                                            | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR);
+  m_normalBuffer = m_alloc.createBuffer(cmdBuf, m_gltfScene.m_normals,
+                                        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+                                            | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+  m_uvBuffer     = m_alloc.createBuffer(cmdBuf, m_gltfScene.m_texcoords0,
+                                        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+                                            | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+
+  // Copying all materials, only the elements we need
+  std::vector<GltfShadeMaterial> shadeMaterials;
+  for (const auto& m : m_gltfScene.m_materials)
+  {
+    shadeMaterials.emplace_back(GltfShadeMaterial{m.baseColorFactor, m.emissiveFactor, m.baseColorTexture});
+  }
+  m_materialBuffer = m_alloc.createBuffer(cmdBuf, shadeMaterials,
+                                          VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+
+  // The following is used to find the primitive mesh information in the CHIT
+  std::vector<PrimMeshInfo> primLookup;
+  for (auto& primMesh : m_gltfScene.m_primMeshes)
+  {
+    primLookup.push_back({primMesh.firstIndex, primMesh.vertexOffset, primMesh.materialIndex});
+  }
+  m_primInfo = m_alloc.createBuffer(cmdBuf, primLookup, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+
+
+  SceneDesc sceneDesc;
+  sceneDesc.vertexAddress = nvvk::getBufferDeviceAddress(m_device, m_vertexBuffer.buffer);
+  sceneDesc.indexAddress    = nvvk::getBufferDeviceAddress(m_device, m_indexBuffer.buffer);
+  sceneDesc.normalAddress   = nvvk::getBufferDeviceAddress(m_device, m_normalBuffer.buffer);
+  sceneDesc.uvAddress       = nvvk::getBufferDeviceAddress(m_device, m_uvBuffer.buffer);
+  sceneDesc.materialAddress = nvvk::getBufferDeviceAddress(m_device, m_materialBuffer.buffer);
+  sceneDesc.primInfoAddress = nvvk::getBufferDeviceAddress(m_device, m_primInfo.buffer);
+  m_sceneDesc               = m_alloc.createBuffer(cmdBuf, sizeof(SceneDesc), &sceneDesc,
+                                                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+
+  // Creates all textures found
+  createTextureImages(cmdBuf, tmodel);
   cmdBufGet.submitAndWait(cmdBuf);
   m_alloc.finalizeAndReleaseStaging();
 
-  std::string objNb = std::to_string(m_objModel.size());
-  m_debug.setObjectName(model.vertexBuffer.buffer, (std::string("vertex_" + objNb)));
-  m_debug.setObjectName(model.indexBuffer.buffer, (std::string("index_" + objNb)));
-  m_debug.setObjectName(model.matColorBuffer.buffer, (std::string("mat_" + objNb)));
-  m_debug.setObjectName(model.matIndexBuffer.buffer, (std::string("matIdx_" + objNb)));
 
-  // Keeping transformation matrix of the instance
-  ObjInstance instance;
-  instance.transform = transform;
-  instance.objIndex  = static_cast<uint32_t>(m_objModel.size());
-  m_instances.push_back(instance);
-
-  // Creating information for device access
-  ObjDesc desc;
-  desc.txtOffset            = txtOffset;
-  desc.vertexAddress        = nvvk::getBufferDeviceAddress(m_device, model.vertexBuffer.buffer);
-  desc.indexAddress         = nvvk::getBufferDeviceAddress(m_device, model.indexBuffer.buffer);
-  desc.materialAddress      = nvvk::getBufferDeviceAddress(m_device, model.matColorBuffer.buffer);
-  desc.materialIndexAddress = nvvk::getBufferDeviceAddress(m_device, model.matIndexBuffer.buffer);
-
-  // Keeping the obj host model and device description
-  m_objModel.emplace_back(model);
-  m_objDesc.emplace_back(desc);
+  NAME_VK(m_vertexBuffer.buffer);
+  NAME_VK(m_indexBuffer.buffer);
+  NAME_VK(m_normalBuffer.buffer);
+  NAME_VK(m_uvBuffer.buffer);
+  NAME_VK(m_materialBuffer.buffer);
+  NAME_VK(m_primInfo.buffer);
+  NAME_VK(m_sceneDesc.buffer);
 }
 
 
@@ -256,26 +276,9 @@ void HelloVulkan::createUniformBuffer()
 }
 
 //--------------------------------------------------------------------------------------------------
-// Create a storage buffer containing the description of the scene elements
-// - Which geometry is used by which instance
-// - Transformation
-// - Offset for texture
-//
-void HelloVulkan::createObjDescriptionBuffer()
-{
-  nvvk::CommandPool cmdGen(m_device, m_graphicsQueueIndex);
-
-  auto cmdBuf = cmdGen.createCommandBuffer();
-  m_bObjDesc  = m_alloc.createBuffer(cmdBuf, m_objDesc, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-  cmdGen.submitAndWait(cmdBuf);
-  m_alloc.finalizeAndReleaseStaging();
-  m_debug.setObjectName(m_bObjDesc.buffer, "ObjDescs");
-}
-
-//--------------------------------------------------------------------------------------------------
 // Creating all textures and samplers
 //
-void HelloVulkan::createTextureImages(const VkCommandBuffer& cmdBuf, const std::vector<std::string>& textures)
+void HelloVulkan::createTextureImages(const VkCommandBuffer& cmdBuf, tinygltf::Model& gltfModel)
 {
   VkSamplerCreateInfo samplerCreateInfo{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
   samplerCreateInfo.minFilter  = VK_FILTER_LINEAR;
@@ -285,63 +288,44 @@ void HelloVulkan::createTextureImages(const VkCommandBuffer& cmdBuf, const std::
 
   VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
 
-  // If no textures are present, create a dummy one to accommodate the pipeline layout
-  if(textures.empty() && m_textures.empty())
+  auto addDefaultTexture = [this]() {
+    // Make dummy image(1,1), needed as we cannot have an empty array
+    nvvk::ScopeCommandBuffer cmdBuf(m_device, m_graphicsQueueIndex);
+    std::array<uint8_t, 4>   white = {255, 255, 255, 255};
+
+    VkSamplerCreateInfo sampler{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+    m_textures.emplace_back(m_alloc.createTexture(cmdBuf, 4, white.data(), nvvk::makeImage2DCreateInfo(VkExtent2D{1, 1}), sampler));
+    m_debug.setObjectName(m_textures.back().image, "dummy");
+  };
+
+  if (gltfModel.images.empty())
   {
-    nvvk::Texture texture;
-
-    std::array<uint8_t, 4> color{255u, 255u, 255u, 255u};
-    VkDeviceSize           bufferSize      = sizeof(color);
-    auto                   imgSize         = VkExtent2D{1, 1};
-    auto                   imageCreateInfo = nvvk::makeImage2DCreateInfo(imgSize, format);
-
-    // Creating the dummy texture
-    nvvk::Image           image  = m_alloc.createImage(cmdBuf, bufferSize, color.data(), imageCreateInfo);
-    VkImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(image.image, imageCreateInfo);
-    texture                      = m_alloc.createTexture(image, ivInfo, samplerCreateInfo);
-
-    // The image format must be in VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-    nvvk::cmdBarrierImageLayout(cmdBuf, texture.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    m_textures.push_back(texture);
+    addDefaultTexture();
+    return;
   }
-  else
+
+  m_textures.reserve(gltfModel.images.size());
+  for (size_t i = 0; i < gltfModel.images.size(); ++i)
   {
-    // Uploading all images
-    for(const auto& texture : textures)
+    auto&        gltfimage  = gltfModel.images[i];
+    void*        buffer     = &gltfimage.image[0];
+    VkDeviceSize bufferSize = gltfimage.image.size();
+    auto         imgSize    = VkExtent2D{(uint32_t)gltfimage.width, (uint32_t)gltfimage.height};
+
+    if(bufferSize == 0 || gltfimage.width == -1 || gltfimage.height == -1)
     {
-      std::stringstream o;
-      int               texWidth, texHeight, texChannels;
-      o << "media/textures/" << texture;
-      std::string txtFile = nvh::findFile(o.str(), defaultSearchPaths, true);
-
-      stbi_uc* stbi_pixels = stbi_load(txtFile.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-
-      std::array<stbi_uc, 4> color{255u, 0u, 255u, 255u};
-
-      stbi_uc* pixels = stbi_pixels;
-      // Handle failure
-      if(!stbi_pixels)
-      {
-        texWidth = texHeight = 1;
-        texChannels          = 4;
-        pixels               = reinterpret_cast<stbi_uc*>(color.data());
-      }
-
-      VkDeviceSize bufferSize      = static_cast<uint64_t>(texWidth) * texHeight * sizeof(uint8_t) * 4;
-      auto         imgSize         = VkExtent2D{(uint32_t)texWidth, (uint32_t)texHeight};
-      auto         imageCreateInfo = nvvk::makeImage2DCreateInfo(imgSize, format, VK_IMAGE_USAGE_SAMPLED_BIT, true);
-
-      {
-        nvvk::Image image = m_alloc.createImage(cmdBuf, bufferSize, pixels, imageCreateInfo);
-        nvvk::cmdGenerateMipmaps(cmdBuf, image.image, format, imgSize, imageCreateInfo.mipLevels);
-        VkImageViewCreateInfo ivInfo  = nvvk::makeImageViewCreateInfo(image.image, imageCreateInfo);
-        nvvk::Texture         texture = m_alloc.createTexture(image, ivInfo, samplerCreateInfo);
-
-        m_textures.push_back(texture);
-      }
-
-      stbi_image_free(stbi_pixels);
+      addDefaultTexture();
+      continue;
     }
+
+    VkImageCreateInfo imageCreateInfo = nvvk::makeImage2DCreateInfo(imgSize, format, VK_IMAGE_USAGE_SAMPLED_BIT, true);
+
+    nvvk::Image image = m_alloc.createImage(cmdBuf, bufferSize, buffer, imageCreateInfo);
+    nvvk::cmdGenerateMipmaps(cmdBuf, image.image, format, imgSize, imageCreateInfo.mipLevels);
+    VkImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(image.image, imageCreateInfo);
+    m_textures.emplace_back(m_alloc.createTexture(image, ivInfo, samplerCreateInfo));
+
+    m_debug.setObjectName(m_textures[i].image, std::string("Txt" + std::to_string(i)));
   }
 }
 
@@ -357,14 +341,6 @@ void HelloVulkan::destroyResources()
 
   m_alloc.destroy(m_bGlobals);
   m_alloc.destroy(m_bObjDesc);
-
-  for(auto& m : m_objModel)
-  {
-    m_alloc.destroy(m.vertexBuffer);
-    m_alloc.destroy(m.indexBuffer);
-    m_alloc.destroy(m.matColorBuffer);
-    m_alloc.destroy(m.matIndexBuffer);
-  }
 
   for(auto& t : m_textures)
   {
@@ -409,19 +385,6 @@ void HelloVulkan::rasterize(const VkCommandBuffer& cmdBuf)
   vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphicsPipeline);
   vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descSet, 0, nullptr);
 
-
-  for(const HelloVulkan::ObjInstance& inst : m_instances)
-  {
-    auto& model            = m_objModel[inst.objIndex];
-    m_pcRaster.objIndex    = inst.objIndex;  // Telling which object is drawn
-    m_pcRaster.modelMatrix = inst.transform;
-
-    vkCmdPushConstants(cmdBuf, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                       sizeof(PushConstantRaster), &m_pcRaster);
-    vkCmdBindVertexBuffers(cmdBuf, 0, 1, &model.vertexBuffer.buffer, &offset);
-    vkCmdBindIndexBuffer(cmdBuf, model.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(cmdBuf, model.nbIndices, 1, 0, 0, 0);
-  }
   m_debug.endLabel(cmdBuf);
 }
 
