@@ -21,14 +21,13 @@
 #include <sstream>
 
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "obj_loader.h"
-#include "stb_image.h"
 
 #include "hello_vulkan.h"
 #include "nvh/alignment.hpp"
 #include "nvh/cameramanipulator.hpp"
 #include "nvh/fileoperations.hpp"
+#include "nvh/gltfscene.hpp"
+#include "nvh/nvprint.hpp"
 #include "nvvk/commands_vk.hpp"
 #include "nvvk/descriptorsets_vk.hpp"
 #include "nvvk/images_vk.hpp"
@@ -36,6 +35,12 @@
 #include "nvvk/renderpasses_vk.hpp"
 #include "nvvk/shaders_vk.hpp"
 #include "nvvk/buffers_vk.hpp"
+
+
+#define TINYGLTF_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "tiny_gltf.h"
 
 extern std::vector<std::string> defaultSearchPaths;
 
@@ -102,17 +107,19 @@ void HelloVulkan::updateUniformBuffer(const VkCommandBuffer& cmdBuf)
 //
 void HelloVulkan::createDescriptorSetLayout()
 {
-  auto nbTxt = static_cast<uint32_t>(m_textures.size());
+  auto& bind = m_descSetLayoutBind;
 
   // Camera matrices
-  m_descSetLayoutBind.addBinding(SceneBindings::eGlobals, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1,
+  bind.addBinding(SceneBindings::eGlobals, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1,
                                  VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-  // Obj descriptions
-  m_descSetLayoutBind.addBinding(SceneBindings::eObjDescs, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
-                                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
-  // Textures
-  m_descSetLayoutBind.addBinding(SceneBindings::eTextures, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, nbTxt,
-                                 VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+  // Array of textures
+  auto nbTextures = static_cast<uint32_t>(m_textures.size());
+  bind.addBinding(SceneBindings::eTextures, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, nbTextures,
+                                 VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+  // Scene buffers
+  bind.addBinding(eSceneDesc, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
+                  VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR
+                      | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
 
 
   m_descSetLayout = m_descSetLayoutBind.createLayout(m_device);
@@ -129,10 +136,10 @@ void HelloVulkan::updateDescriptorSet()
 
   // Camera matrices and scene description
   VkDescriptorBufferInfo dbiUnif{m_bGlobals.buffer, 0, VK_WHOLE_SIZE};
-  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, SceneBindings::eGlobals, &dbiUnif));
+  VkDescriptorBufferInfo sceneDesc{m_sceneDesc.buffer, 0, VK_WHOLE_SIZE};
 
-  VkDescriptorBufferInfo dbiSceneDesc{m_bObjDesc.buffer, 0, VK_WHOLE_SIZE};
-  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, SceneBindings::eObjDescs, &dbiSceneDesc));
+  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, SceneBindings::eGlobals, &dbiUnif));
+  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, eSceneDesc, &sceneDesc));
 
   // All texture samplers
   std::vector<VkDescriptorImageInfo> diit;
@@ -169,12 +176,11 @@ void HelloVulkan::createGraphicsPipeline()
   gpb.depthStencilState.depthTestEnable = true;
   gpb.addShader(nvh::loadFile("spv/vert_shader.vert.spv", true, paths, true), VK_SHADER_STAGE_VERTEX_BIT);
   gpb.addShader(nvh::loadFile("spv/frag_shader.frag.spv", true, paths, true), VK_SHADER_STAGE_FRAGMENT_BIT);
-  gpb.addBindingDescription({0, sizeof(VertexObj)});
+  gpb.addBindingDescriptions({{0, sizeof(glm::vec3)}, {1, sizeof(glm::vec3)}, {2, sizeof(glm::vec2)}});
   gpb.addAttributeDescriptions({
-      {0, 0, VK_FORMAT_R32G32B32_SFLOAT, static_cast<uint32_t>(offsetof(VertexObj, pos))},
-      {1, 0, VK_FORMAT_R32G32B32_SFLOAT, static_cast<uint32_t>(offsetof(VertexObj, nrm))},
-      {2, 0, VK_FORMAT_R32G32B32_SFLOAT, static_cast<uint32_t>(offsetof(VertexObj, color))},
-      {3, 0, VK_FORMAT_R32G32_SFLOAT, static_cast<uint32_t>(offsetof(VertexObj, texCoord))},
+      {0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0},  // Position
+      {1, 1, VK_FORMAT_R32G32B32_SFLOAT, 0},  // Normal
+      {2, 2, VK_FORMAT_R32G32_SFLOAT, 0},     // Texcoord0
   });
 
   m_graphicsPipeline = gpb.createPipeline();
@@ -591,7 +597,7 @@ auto HelloVulkan::primitiveToVkGeometry(const nvh::GltfPrimMesh& prim)
   VkAccelerationStructureGeometryTrianglesDataKHR triangles{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR};
   triangles.vertexFormat             = VK_FORMAT_R32G32B32_SFLOAT;  // vec3 vertex position data.
   triangles.vertexData.deviceAddress = vertexAddress;
-  triangles.vertexStride             = sizeof(VertexObj);
+  triangles.vertexStride             = sizeof(glm::vec3);
   // Describe index data (32-bit unsigned int)
   triangles.indexType               = VK_INDEX_TYPE_UINT32;
   triangles.indexData.deviceAddress = indexAddress;
