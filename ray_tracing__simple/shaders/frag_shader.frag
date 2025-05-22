@@ -27,7 +27,7 @@
 #extension GL_EXT_buffer_reference2 : require
 
 #include "gltf.glsl"
-#include "wavefront.glsl"
+#include "host_device.h"
 
 
 layout(push_constant) uniform _PushConstantRaster

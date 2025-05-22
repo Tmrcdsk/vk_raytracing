@@ -54,10 +54,10 @@ static void onErrorCallback(int error, const char* description)
 }
 
 // Extra UI
-void renderUI(HelloVulkan& helloVk)
+void renderUI(HelloVulkan& helloVk, bool useRaytracer)
 {
   ImGuiH::CameraWidget();
-  if(ImGui::CollapsingHeader("Light"))
+  if(!useRaytracer && ImGui::CollapsingHeader("Light"))
   {
     ImGui::RadioButton("Point", &helloVk.m_pcRaster.lightType, 0);
     ImGui::SameLine();
@@ -123,7 +123,6 @@ int main(int argc, char** argv)
   contextInfo.setVersion(1, 2);                       // Using Vulkan 1.2
   for(uint32_t ext_id = 0; ext_id < count; ext_id++)  // Adding required extensions (surface, win32, linux, ..)
     contextInfo.addInstanceExtension(reqExtensions[ext_id]);
-  contextInfo.addInstanceLayer("VK_LAYER_LUNARG_monitor", true);              // FPS in titlebar
   contextInfo.addInstanceExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME, true);  // Allow debug names
   contextInfo.addDeviceExtension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);            // Enabling ability to present rendering
 
@@ -133,6 +132,10 @@ int main(int argc, char** argv)
   VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeature{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR};
   contextInfo.addDeviceExtension(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME, false, &rtPipelineFeature);  // To use vkCmdTraceRaysKHR
   contextInfo.addDeviceExtension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);  // Required by ray tracing pipeline
+  contextInfo.addDeviceExtension(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
+
+  VkPhysicalDeviceShaderClockFeaturesKHR clockFeature{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR};
+  contextInfo.addDeviceExtension(VK_KHR_SHADER_CLOCK_EXTENSION_NAME, false, &clockFeature);
 
   // Creating Vulkan base application
   nvvk::Context vkctx{};
@@ -166,7 +169,6 @@ int main(int argc, char** argv)
   helloVk.createDescriptorSetLayout();
   helloVk.createGraphicsPipeline();
   helloVk.createUniformBuffer();
-  helloVk.createObjDescriptionBuffer();
   helloVk.updateDescriptorSet();
 
   // #VKRay
@@ -175,7 +177,6 @@ int main(int argc, char** argv)
   helloVk.createTopLevelAS();
   helloVk.createRtDescriptorSet();
   helloVk.createRtPipeline();
-  helloVk.createRtShaderBindingTable();
 
   helloVk.createPostDescriptor();
   helloVk.createPostPipeline();
@@ -206,9 +207,9 @@ int main(int argc, char** argv)
     {
       ImGuiH::Panel::Begin();
       ImGui::ColorEdit3("Clear color", reinterpret_cast<float*>(&clearColor));
-      ImGui::Checkbox("Ray Tracer mode", &useRaytracer);  // Switch between raster and ray tracing
-
-      renderUI(helloVk);
+      if(ImGui::Checkbox("Ray Tracer mode", &useRaytracer))  // Switch between raster and ray tracing
+        helloVk.resetFrame(); // 一定要在if语句中，否则不会累积结果
+      renderUI(helloVk, useRaytracer);
       ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
       ImGuiH::Control::Info("", "", "(F10) Toggle Pane", ImGuiH::Control::Flags::Disabled);
       ImGuiH::Panel::End();

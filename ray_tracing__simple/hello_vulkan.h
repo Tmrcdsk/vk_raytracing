@@ -47,7 +47,6 @@ public:
   void loadScene(const std::string& filename);
   void updateDescriptorSet();
   void createUniformBuffer();
-  void createObjDescriptionBuffer();
   void createTextureImages(const VkCommandBuffer& cmdBuf, tinygltf::Model& gltfModel);
   void updateUniformBuffer(const VkCommandBuffer& cmdBuf);
   void onResize(int /*w*/, int /*h*/) override;
@@ -67,10 +66,11 @@ public:
   // Information pushed at each draw call
   PushConstantRaster m_pcRaster{
       {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1},  // Identity matrix
-      {10.f, 15.f, 8.f},                                 // light position
+      {0.f, 4.5f, 0.f},                                  // light position
       0,                                                 // instance Id
-      100.f,                                             // light intensity
-      0                                                  // light type
+      10.f,                                              // light intensity
+      0,                                                 // light type
+      0                                                  // material id
   };
 
   // Graphic pipeline
@@ -81,9 +81,7 @@ public:
   VkDescriptorSetLayout       m_descSetLayout;
   VkDescriptorSet             m_descSet;
 
-  nvvk::Buffer m_bGlobals;  // Device-Host of the camera matrices
-  nvvk::Buffer m_bObjDesc;  // Device buffer of the OBJ descriptions
-
+  nvvk::Buffer               m_bGlobals;  // Device-Host of the camera matrices
   std::vector<nvvk::Texture> m_textures;  // vector of all textures of the scene
 
 
@@ -119,7 +117,6 @@ public:
   void createRtDescriptorSet();
   void updateRtDescriptorSet();
   void createRtPipeline();
-  void createRtShaderBindingTable();
   void raytrace(const VkCommandBuffer& cmdBuf, const glm::vec4& clearColor);
   void updateFrame();
   void resetFrame();
@@ -134,12 +131,7 @@ public:
   std::vector<VkRayTracingShaderGroupCreateInfoKHR> m_rtShaderGroups;
   VkPipelineLayout                                  m_rtPipelineLayout;
   VkPipeline                                        m_rtPipeline;
-
-  nvvk::Buffer                    m_rtSBTBuffer;
-  VkStridedDeviceAddressRegionKHR m_rgenRegion{};
-  VkStridedDeviceAddressRegionKHR m_missRegion{};
-  VkStridedDeviceAddressRegionKHR m_hitRegion{};
-  VkStridedDeviceAddressRegionKHR m_callRegion{};
+  nvvk::SBTWrapper                                  m_sbtWrapper;
 
   // Push constant for ray tracer
   PushConstantRay m_pcRay{};

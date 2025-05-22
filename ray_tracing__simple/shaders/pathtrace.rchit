@@ -28,6 +28,7 @@
 
 #include "gltf.glsl"
 #include "raycommon.glsl"
+#include "sampling.glsl"
 #include "host_device.h"
 
 hitAttributeEXT vec2 attribs;
@@ -36,27 +37,20 @@ hitAttributeEXT vec2 attribs;
 layout(location = 0) rayPayloadInEXT hitPayload prd;
 layout(location = 1) rayPayloadEXT bool isShadowed;
 
-layout(buffer_reference, scalar) readonly buffer Vertices { vec3 v[]; };
-layout(buffer_reference, scalar) readonly buffer Indices { uint i[]; };
-layout(buffer_reference, scalar) readonly buffer Normals { vec3 n[]; };
-layout(buffer_reference, scalar) readonly buffer TexCoords { vec2 t[]; };
-layout(buffer_reference, scalar) readonly buffer Materials { GltfShadeMaterial m[]; };
-
 layout(set = 0, binding = eTlas) uniform accelerationStructureEXT topLevelAS;
 layout(set = 0, binding = ePrimLookup) readonly buffer _InstanceInfo { PrimMeshInfo primInfo[]; };
+
+layout(buffer_reference, scalar) readonly buffer Vertices { vec3  v[]; };
+layout(buffer_reference, scalar) readonly buffer Indices { ivec3 i[]; };
+layout(buffer_reference, scalar) readonly buffer Normals { vec3  n[]; };
+layout(buffer_reference, scalar) readonly buffer TexCoords { vec2  t[]; };
+layout(buffer_reference, scalar) readonly buffer Materials { GltfShadeMaterial m[]; };
 
 layout(set = 1, binding = eSceneDesc) readonly buffer SceneDesc_ { SceneDesc sceneDesc; };
 layout(set = 1, binding = eTextures) uniform sampler2D texturesMap[];
 
+layout(push_constant) uniform _PushConstantRay { PushConstantRay pcRay; };
 // clang-format on
-
-layout(push_constant) uniform Constants
-{
-  vec4  clearColor;
-  vec3  lightPosition;
-  float lightIntensity;
-  int   lightType;
-} pushC;
 
 
 void main()
@@ -65,7 +59,7 @@ void main()
   PrimMeshInfo pinfo = primInfo[gl_InstanceCustomIndexEXT];
 
   // Getting the 'first index' for this mesh (offset of the mesh + offset of the triangle)
-  uint indexOffset  = pinfo.indexOffset + (3 * gl_PrimitiveID);
+  uint indexOffset  = (pinfo.indexOffset / 3) + gl_PrimitiveID; // 注意这里，原来的计算会导致崩溃
   uint vertexOffset = pinfo.vertexOffset;           // Vertex offset as defined in glTF
   uint matIndex     = max(0, pinfo.materialIndex);  // material of primitive mesh
 
@@ -78,7 +72,7 @@ void main()
 
 
   // Getting the 3 indices of the triangle (local)
-  ivec3 triangleIndex = ivec3(indices.i[indexOffset + 0], indices.i[indexOffset + 1], indices.i[indexOffset + 2]);
+  ivec3 triangleIndex = indices.i[indexOffset];
   triangleIndex += ivec3(vertexOffset);  // (global)
 
   const vec3 barycentrics = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);
@@ -106,8 +100,8 @@ void main()
 
   // https://en.wikipedia.org/wiki/Path_tracing
   // Material of the object
-  GltfMaterial mat       = materials[nonuniformEXT(matIndex)];
-  vec3         emittance = mat.emissiveFactor;
+  GltfShadeMaterial mat       = materials.m[matIndex];
+  vec3              emittance = mat.emissiveFactor;
 
   // Pick a random direction from here and keep going.
   vec3 tangent, bitangent;
@@ -127,6 +121,12 @@ void main()
     albedo *= texture(texturesMap[nonuniformEXT(txtId)], texcoord0).xyz;
   }
   vec3 BRDF = albedo / M_PI;
+
+  prd.rayOrigin    = rayOrigin;
+  prd.rayDirection = rayDirection;
+  prd.hitValue     = emittance;
+  prd.weight       = BRDF * cos_theta / p;
+  return;
 
   // Recursively trace reflected light sources.
   if(prd.depth < 10)

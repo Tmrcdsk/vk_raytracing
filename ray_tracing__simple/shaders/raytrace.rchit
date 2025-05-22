@@ -129,7 +129,7 @@ void main()
   if(mat.pbrBaseColorTexture > -1)
   {
     uint txtId = mat.pbrBaseColorTexture;
-    diffuse *= texture(texturesMap[nonuniformEXT(txtId)], texCoord0).xyz;
+    diffuse *= texture(texturesMap[nonuniformEXT(txtId)], texcoord0).xyz;
   }
 
   vec3  specular    = vec3(0);
