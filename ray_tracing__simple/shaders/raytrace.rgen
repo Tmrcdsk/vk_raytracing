@@ -24,6 +24,7 @@
 
 
 #include "raycommon.glsl"
+#include "sampling.glsl"
 #include "host_device.h"
 
 // clang-format off
