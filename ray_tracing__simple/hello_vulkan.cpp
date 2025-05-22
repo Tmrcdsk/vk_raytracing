@@ -924,3 +924,29 @@ void HelloVulkan::raytrace(const VkCommandBuffer& cmdBuf, const glm::vec4& clear
 
   m_debug.endLabel(cmdBuf);
 }
+
+//--------------------------------------------------------------------------------------------------
+// If the camera matrix has changed, resets the frame.
+// otherwise, increments frame.
+//
+void HelloVulkan::updateFrame()
+{
+  static glm::mat4 refCamMatrix;
+  static float     refFov{CameraManip.getFov()};
+
+  const auto& m   = CameraManip.getMatrix();
+  const auto  fov = CameraManip.getFov();
+
+  if(refCamMatrix != m || refFov != fov)
+  {
+    resetFrame();
+    refCamMatrix = m;
+    refFov       = fov;
+  }
+  m_pcRay.frame++;
+}
+
+void HelloVulkan::resetFrame()
+{
+  m_pcRay.frame = -1;
+}
