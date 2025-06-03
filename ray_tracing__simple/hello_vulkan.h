@@ -158,6 +158,7 @@ public:
 
   // #VK_animation
   void animationInstances(float time);
+  void animationObject(float time);
 
   // #VK_compute
   void createCompDescriptors();

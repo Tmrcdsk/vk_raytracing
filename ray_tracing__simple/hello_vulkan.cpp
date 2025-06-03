@@ -972,6 +972,27 @@ void HelloVulkan::animationInstances(float time)
   m_rtBuilder.buildTlas(m_tlas, m_rtFlags, true);
 }
 
+//--------------------------------------------------------------------------------------------------
+// Animating the sphere vertices using a compute shader
+//
+void HelloVulkan::animationObject(float time)
+{
+  const uint32_t sphereId = 2;
+  ObjModel&      model    = m_objModel[sphereId];
+
+  updateCompDescriptors(model.vertexBuffer);
+
+  nvvk::CommandPool genCmdBuf(m_device, m_graphicsQueueIndex);
+  VkCommandBuffer   cmdBuf = genCmdBuf.createCommandBuffer();
+
+  vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_COMPUTE, m_compPipeline);
+  vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_COMPUTE, m_compPipelineLayout, 0, 1, &m_compDescSet, 0, nullptr);
+  vkCmdPushConstants(cmdBuf, m_compPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float), &time);
+  vkCmdDispatch(cmdBuf, model.nbVertices, 1, 1);
+
+  genCmdBuf.submitAndWait(cmdBuf);
+}
+
 //////////////////////////////////////////////////////////////////////////
 // #VK_compute
 void HelloVulkan::createCompDescriptors()
