@@ -661,8 +661,7 @@ void HelloVulkan::createBottomLevelAS()
 //
 void HelloVulkan::createTopLevelAS()
 {
-  std::vector<VkAccelerationStructureInstanceKHR> tlas;
-  tlas.reserve(m_instances.size());
+  m_tlas.reserve(m_instances.size());
   for(const HelloVulkan::ObjInstance& inst : m_instances)
   {
     VkAccelerationStructureInstanceKHR rayInst{};
@@ -672,9 +671,11 @@ void HelloVulkan::createTopLevelAS()
     rayInst.flags                          = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
     rayInst.mask                           = 0xFF;       //  Only be hit if rayMask & instance.mask != 0
     rayInst.instanceShaderBindingTableRecordOffset = 0;  // We will use the same hit group for all objects
-    tlas.emplace_back(rayInst);
+    m_tlas.emplace_back(rayInst);
   }
-  m_rtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
+
+  m_rtFlags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR;
+  m_rtBuilder.buildTlas(m_tlas, m_rtFlags);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -955,6 +956,11 @@ void HelloVulkan::animationInstances(float time)
     auto& transform = m_instances[wusonIdx].transform;
     transform       = glm::rotate(transform, i * deltaAngle + offset, glm::vec3(0.f, 1.f, 0.f));
     transform       = glm::translate(transform, glm::vec3(radius, 0.f, 0.f));
+
+    VkAccelerationStructureInstanceKHR& tinst = m_tlas[wusonIdx];
+    tinst.transform                           = nvvk::toTransformMatrixKHR(transform);
   }
 
+  // Updating the top level acceleration structure
+  m_rtBuilder.buildTlas(m_tlas, m_rtFlags, true);
 }

@@ -151,9 +151,13 @@ public:
   VkStridedDeviceAddressRegionKHR m_hitRegion{};
   VkStridedDeviceAddressRegionKHR m_callRegion{};
 
+  std::vector<VkAccelerationStructureInstanceKHR> m_tlas;
+
   // Push constant for ray tracer
   PushConstantRay m_pcRay{};
 
   // #VK_animation
   void animationInstances(float time);
+
+  VkBuildAccelerationStructureFlagsKHR m_rtFlags;
 };
