@@ -934,3 +934,27 @@ void HelloVulkan::raytrace(const VkCommandBuffer& cmdBuf, const glm::vec4& clear
 
   m_debug.endLabel(cmdBuf);
 }
+
+//////////////////////////////////////////////////////////////////////////
+// #VK_animation
+
+//--------------------------------------------------------------------------------------------------
+// Making the Wuson running in circle
+//
+void HelloVulkan::animationInstances(float time)
+{
+  const int32_t nbWuson     = static_cast<int32_t>(m_instances.size() - 1);
+  const float   deltaAngle  = 6.28318530718f / static_cast<float>(nbWuson);
+  const float   wusonLength = 3.f;
+  const float   radius      = wusonLength / (2.f * sin(deltaAngle / 2.0f));
+  const float   offset      = time * 0.5f;
+
+  for (int i = 0; i < nbWuson; ++i)
+  {
+    int wusonIdx = i + 1;
+    auto& transform = m_instances[wusonIdx].transform;
+    transform       = glm::rotate(transform, i * deltaAngle + offset, glm::vec3(0.f, 1.f, 0.f));
+    transform       = glm::translate(transform, glm::vec3(radius, 0.f, 0.f));
+  }
+
+}

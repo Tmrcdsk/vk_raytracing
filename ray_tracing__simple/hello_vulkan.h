@@ -153,4 +153,7 @@ public:
 
   // Push constant for ray tracer
   PushConstantRay m_pcRay{};
+
+  // #VK_animation
+  void animationInstances(float time);
 };
