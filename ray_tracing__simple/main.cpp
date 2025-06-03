@@ -190,6 +190,7 @@ int main(int argc, char** argv)
 
   glm::vec4 clearColor   = glm::vec4(1, 1, 1, 1.00f);
   bool      useRaytracer = true;
+  auto      start        = std::chrono::system_clock::now();
 
 
   helloVk.setupGlfwCallbacks(window);
@@ -219,6 +220,10 @@ int main(int argc, char** argv)
       ImGuiH::Control::Info("", "", "(F10) Toggle Pane", ImGuiH::Control::Flags::Disabled);
       ImGuiH::Panel::End();
     }
+
+    // #VK_animation
+    std::chrono::duration<float> diff = std::chrono::system_clock::now() - start;
+    helloVk.animationInstances(diff.count());
 
     // Start rendering the scene
     helloVk.prepareFrame();
