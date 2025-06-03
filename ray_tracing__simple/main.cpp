@@ -165,8 +165,9 @@ int main(int argc, char** argv)
   helloVk.loadModel(nvh::findFile("media/scenes/wuson.obj", defaultSearchPaths));
   uint32_t wusonId = 1;
   glm::mat4 identity{1};
-  for(int i = 0; i < 20; ++i)
+  for(int i = 0; i < 5; ++i)
     helloVk.m_instances.push_back({identity, wusonId});
+  helloVk.loadModel(nvh::findFile("media/scenes/sphere.obj", defaultSearchPaths, true));
 
   helloVk.createOffscreenRender();
   helloVk.createDescriptorSetLayout();

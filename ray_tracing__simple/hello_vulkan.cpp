@@ -944,7 +944,7 @@ void HelloVulkan::raytrace(const VkCommandBuffer& cmdBuf, const glm::vec4& clear
 //
 void HelloVulkan::animationInstances(float time)
 {
-  const int32_t nbWuson     = static_cast<int32_t>(m_instances.size() - 1);
+  const int32_t nbWuson     = static_cast<int32_t>(m_instances.size() - 2); // All except sphere and plane
   const float   deltaAngle  = 6.28318530718f / static_cast<float>(nbWuson);
   const float   wusonLength = 3.f;
   const float   radius      = wusonLength / (2.f * sin(deltaAngle / 2.0f));
