@@ -651,16 +651,15 @@ auto HelloVulkan::objectToVkGeometryKHR(const ObjModel& model)
 void HelloVulkan::createBottomLevelAS()
 {
   // BLAS - Storing each primitive in a geometry
-  std::vector<nvvk::RaytracingBuilderKHR::BlasInput> allBlas;
-  allBlas.reserve(m_objModel.size());
+  m_blas.reserve(m_objModel.size());
   for(const auto& obj : m_objModel)
   {
     auto blas = objectToVkGeometryKHR(obj);
 
     // We could add more geometry in each BLAS, but we add only one for now
-    allBlas.emplace_back(blas);
+    m_blas.emplace_back(blas);
   }
-  m_rtBuilder.buildBlas(allBlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
+  m_rtBuilder.buildBlas(m_blas, VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -991,6 +990,8 @@ void HelloVulkan::animationObject(float time)
   vkCmdDispatch(cmdBuf, model.nbVertices, 1, 1);
 
   genCmdBuf.submitAndWait(cmdBuf);
+  m_rtBuilder.updateBlas(sphereId, m_blas[sphereId],
+                         VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR);
 }
 
 //////////////////////////////////////////////////////////////////////////

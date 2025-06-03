@@ -152,6 +152,7 @@ public:
   VkStridedDeviceAddressRegionKHR m_callRegion{};
 
   std::vector<VkAccelerationStructureInstanceKHR> m_tlas;
+  std::vector<nvvk::RaytracingBuilderKHR::BlasInput> m_blas;
 
   // Push constant for ray tracer
   PushConstantRay m_pcRay{};
