@@ -188,6 +188,10 @@ int main(int argc, char** argv)
   helloVk.createPostPipeline();
   helloVk.updatePostDescriptorSet();
 
+  // #VK_compute
+  helloVk.createCompDescriptors();
+  helloVk.createCompPipelines();
+
 
   glm::vec4 clearColor   = glm::vec4(1, 1, 1, 1.00f);
   bool      useRaytracer = true;
@@ -224,6 +228,7 @@ int main(int argc, char** argv)
 
     // #VK_animation
     std::chrono::duration<float> diff = std::chrono::system_clock::now() - start;
+    helloVk.animationObject(diff.count());
     helloVk.animationInstances(diff.count());
 
     // Start rendering the scene
