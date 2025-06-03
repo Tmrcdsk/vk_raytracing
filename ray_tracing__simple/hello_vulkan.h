@@ -28,6 +28,7 @@
 
 // #VKRay
 #include "nvvk/raytraceKHR_vk.hpp"
+#include "nvvk/sbtwrapper_vk.hpp"
 
 //--------------------------------------------------------------------------------------------------
 // Simple rasterizer of OBJ objects
@@ -131,7 +132,6 @@ public:
   void createRtDescriptorSet();
   void updateRtDescriptorSet();
   void createRtPipeline();
-  void createRtShaderBindingTable();
   void raytrace(const VkCommandBuffer& cmdBuf, const glm::vec4& clearColor);
 
 
@@ -144,12 +144,7 @@ public:
   std::vector<VkRayTracingShaderGroupCreateInfoKHR> m_rtShaderGroups;
   VkPipelineLayout                                  m_rtPipelineLayout;
   VkPipeline                                        m_rtPipeline;
-
-  nvvk::Buffer                    m_rtSBTBuffer;
-  VkStridedDeviceAddressRegionKHR m_rgenRegion{};
-  VkStridedDeviceAddressRegionKHR m_missRegion{};
-  VkStridedDeviceAddressRegionKHR m_hitRegion{};
-  VkStridedDeviceAddressRegionKHR m_callRegion{};
+  nvvk::SBTWrapper                                  m_sbtWrapper;
 
   std::vector<VkAccelerationStructureInstanceKHR> m_tlas;
   std::vector<nvvk::RaytracingBuilderKHR::BlasInput> m_blas;
