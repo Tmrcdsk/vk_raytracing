@@ -891,7 +891,7 @@ void HelloVulkan::animationInstances(float time)
   for (int i = 0; i < nbWuson; ++i)
   {
     int wusonIdx = i + 1;
-    auto& transform = m_instances[wusonIdx].transform;
+    glm::mat4 transform = m_instances[wusonIdx].transform;
     transform       = glm::rotate(transform, i * deltaAngle + offset, glm::vec3(0.f, 1.f, 0.f));
     transform       = glm::translate(transform, glm::vec3(radius, 0.f, 0.f));
 
