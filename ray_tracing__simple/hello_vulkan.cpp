@@ -390,6 +390,13 @@ void HelloVulkan::destroyResources()
   vkDestroyDescriptorSetLayout(m_device, m_rtDescSetLayout, nullptr);
   m_alloc.destroy(m_rtSBTBuffer);
 
+  
+  // #VK_compute
+  vkDestroyPipeline(m_device, m_compPipeline, nullptr);
+  vkDestroyPipelineLayout(m_device, m_compPipelineLayout, nullptr);
+  vkDestroyDescriptorPool(m_device, m_compDescPool, nullptr);
+  vkDestroyDescriptorSetLayout(m_device, m_compDescSetLayout, nullptr);
+
   m_alloc.deinit();
 }
 
@@ -963,4 +970,48 @@ void HelloVulkan::animationInstances(float time)
 
   // Updating the top level acceleration structure
   m_rtBuilder.buildTlas(m_tlas, m_rtFlags, true);
+}
+
+//////////////////////////////////////////////////////////////////////////
+// #VK_compute
+void HelloVulkan::createCompDescriptors()
+{
+  m_compDescSetLayoutBind.addBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT);
+
+  m_compDescSetLayout = m_compDescSetLayoutBind.createLayout(m_device);
+  m_compDescPool      = m_compDescSetLayoutBind.createPool(m_device, 1);
+  m_compDescSet       = nvvk::allocateDescriptorSet(m_device, m_compDescPool, m_compDescSetLayout);
+}
+
+void HelloVulkan::updateCompDescriptors(nvvk::Buffer& vertex)
+{
+  std::vector<VkWriteDescriptorSet> writes;
+  VkDescriptorBufferInfo            dbiUnif{vertex.buffer, 0, VK_WHOLE_SIZE};
+  writes.emplace_back(m_compDescSetLayoutBind.makeWrite(m_compDescSet, 0, &dbiUnif));
+  vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+}
+
+void HelloVulkan::createCompPipelines()
+{
+  // pushing time
+  VkPushConstantRange push_constants = {VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float)};
+
+  VkPipelineLayoutCreateInfo createInfo{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
+  createInfo.setLayoutCount         = 1;
+  createInfo.pSetLayouts            = &m_compDescSetLayout;
+  createInfo.pushConstantRangeCount = 1;
+  createInfo.pPushConstantRanges    = &push_constants;
+  vkCreatePipelineLayout(m_device, &createInfo, nullptr, &m_compPipelineLayout);
+
+
+  VkComputePipelineCreateInfo computePipelineCreateInfo{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
+  computePipelineCreateInfo.layout = m_compPipelineLayout;
+
+  computePipelineCreateInfo.stage =
+      nvvk::createShaderStageInfo(m_device, nvh::loadFile("spv/anim.comp.spv", true, defaultSearchPaths, true),
+                                  VK_SHADER_STAGE_COMPUTE_BIT);
+
+  vkCreateComputePipelines(m_device, {}, 1, &computePipelineCreateInfo, nullptr, &m_compPipeline);
+
+  vkDestroyShaderModule(m_device, computePipelineCreateInfo.stage.module, nullptr);
 }

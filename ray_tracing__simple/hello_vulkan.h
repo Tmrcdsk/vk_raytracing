@@ -159,5 +159,17 @@ public:
   // #VK_animation
   void animationInstances(float time);
 
+  // #VK_compute
+  void createCompDescriptors();
+  void updateCompDescriptors(nvvk::Buffer& vertex);
+  void createCompPipelines();
+
+  nvvk::DescriptorSetBindings m_compDescSetLayoutBind;
+  VkDescriptorPool            m_compDescPool;
+  VkDescriptorSetLayout       m_compDescSetLayout;
+  VkDescriptorSet             m_compDescSet;
+  VkPipeline                  m_compPipeline;
+  VkPipelineLayout            m_compPipelineLayout;
+
   VkBuildAccelerationStructureFlagsKHR m_rtFlags;
 };
